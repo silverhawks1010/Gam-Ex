@@ -1,12 +1,23 @@
-import { Button } from "@workspace/ui/components/button"
+import {Navbar} from "@/components/navbar"
+import { Banner } from "@/components/banner"
+import { Features } from "@/components/features"
+import { Upcoming } from "@/components/upcoming"
+import { TopGames } from "@/components/top-games"
+import { Testimonials } from "@/components/testimonials"
+import { Footer } from "@/components/footer"
 
-export default function Page() {
+export const revalidate = 3600; // Revalidate every hour
+
+export default async function Home() {
   return (
-    <div className="flex items-center justify-center min-h-svh">
-      <div className="flex flex-col items-center justify-center gap-4">
-        <h1 className="text-2xl font-bold">Hello World</h1>
-        <Button size="sm">Button</Button>
-      </div>
-    </div>
+    <main>
+      <Navbar />
+      <Banner />
+      <Features />
+      <Upcoming />
+      <TopGames />
+      <Testimonials />
+      <Footer />
+    </main>
   )
 }
