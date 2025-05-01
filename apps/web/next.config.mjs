@@ -1,6 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@workspace/ui"],
+  reactStrictMode: true,
+  transpilePackages: ["@workspace/ui", "@workspace/api"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "media.rawg.io",
+        port: "",
+        pathname: "/media/**",
+      },
+    ],
+  },
 }
 
-export default nextConfig
+export default nextConfig 

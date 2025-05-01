@@ -1,31 +1,66 @@
-# shadcn/ui monorepo template
+# Gam'Ex - Gestionnaire de Bibliothèque de Jeux
 
-This template is for creating a monorepo with shadcn/ui.
+Une application moderne pour gérer votre collection de jeux vidéo, construite avec Next.js, React Native, et Tamagui.
 
-## Usage
+## Technologies Utilisées
 
-```bash
-pnpm dlx shadcn@latest init
+- 🏗️ **Monorepo** - Turborepo
+- 🎨 **UI** - Tamagui, shadcn/ui
+- 🔄 **État** - Zustand, TanStack Query
+- 🌐 **API** - RAWG API
+- 🗃️ **Base de données** - Supabase
+- 🌍 **i18n** - react-i18next
+- 💳 **Paiements** - Stripe
+
+## Structure du Projet
+
+```
+.
+├── apps/
+│   ├── web/          # Application Next.js
+│   └── mobile/       # Application React Native (Expo)
+└── packages/
+    ├── ui/           # Composants UI partagés
+    ├── api/          # Intégration RAWG API
+    ├── database/     # Couche Supabase
+    └── config/       # Configurations partagées
 ```
 
-## Adding components
+## Démarrage
 
-To add components to your app, run the following command at the root of your `web` app:
+1. Installer les dépendances :
+   ```bash
+   pnpm install
+   ```
 
-```bash
-pnpm dlx shadcn@latest add button -c apps/web
-```
+2. Configurer les variables d'environnement :
+   ```bash
+   cp apps/web/.env.example apps/web/.env.local
+   ```
 
-This will place the ui components in the `packages/ui/src/components` directory.
+3. Démarrer l'application web :
+   ```bash
+   pnpm dev
+   ```
 
-## Tailwind
+## Fonctionnalités
 
-Your `tailwind.config.ts` and `globals.css` are already set up to use the components from the `ui` package.
+- 📚 Gestion de bibliothèque de jeux
+- 🎮 Intégration RAWG pour les données de jeux
+- 👤 Authentification avec Supabase
+- 🌓 Mode sombre/clair
+- 📱 Design responsive
+- 🌍 Internationalisation
+- 💳 Abonnements premium
 
-## Using components
+## Contribution
 
-To use the components in your app, import them from the `ui` package.
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/amazing-feature`)
+3. Commit les changements (`git commit -m 'feat: add amazing feature'`)
+4. Push la branche (`git push origin feature/amazing-feature`)
+5. Ouvrir une Pull Request
 
-```tsx
-import { Button } from "@workspace/ui/components/button"
-```
+## Licence
+
+Ce projet est sous licence MIT. 
