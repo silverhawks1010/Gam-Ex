@@ -4,18 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { GameCard } from "@/components/molecules/GameCard";
-import { rawgService } from "@/lib/services/rawg";
+import { gameService } from "@/lib/services/gameService";
 import { Footer } from "@/components/molecules/Footer";
 import { genreIcons, genreTranslations } from "@/config/genres";
-import { Suspense } from "react";
-import { GenreSectionSkeleton, UpcomingGamesSectionSkeleton } from "@/components/molecules/loading-skeletons";
+import { Genre, Game } from "@/types/game";
+import { Badge } from "@/components/ui/badge";
 
 // Composant pour la section des genres
 async function GenreSection() {
-  const genres = await rawgService.getGenres();
-  const mainGenres = genres.results
-    .filter(genre => Object.keys(genreIcons).includes(genre.name))
-    .sort((a, b) => b.games_count - a.games_count)
+  const genres = await gameService.getGenres();
+  const mainGenres = genres
+    .filter((genre: Genre) => Object.keys(genreIcons).includes(genre.name))
     .slice(0, 6);
 
   return (
@@ -31,7 +30,7 @@ async function GenreSection() {
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {mainGenres.map((genre) => (
+        {mainGenres.map((genre: Genre) => (
           <Link href={`/library?genre=${genre.id}`} key={genre.id}>
             <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer">
               <CardHeader className="text-center">
@@ -39,7 +38,8 @@ async function GenreSection() {
                 <CardTitle className="text-lg">{genreTranslations[genre.name]}</CardTitle>
               </CardHeader>
               <CardContent className="text-center text-muted-foreground">
-                {genre.games_count.toLocaleString()} jeux
+                {/* IGDB ne fournit pas directement le nombre de jeux par genre */}
+                Jeux populaires
               </CardContent>
             </Card>
           </Link>
@@ -51,22 +51,22 @@ async function GenreSection() {
 
 // Composant pour la section des jeux à venir
 async function UpcomingGamesSection() {
-  const futurGames = await rawgService.getFuturGames(3, 1, 4);
+  const recentGames = await gameService.getRecentGames();
 
   return (
     <section className="py-12 md:py-16">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl sm:text-3xl font-bold text-primary">
-          Jeux Populaires des 3 Prochains Mois
+          Jeux Récents
         </h2>
-        <Link href="/library?upcoming=true">
+        <Link href="/library?sort=recent">
           <Button variant="outline" className="text-primary">
             Voir tous les jeux
           </Button>
         </Link>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {futurGames.results.map((game) => (
+        {recentGames.slice(0, 4).map((game: Game) => (
           <GameCard key={game.id} game={game} />
         ))}
       </div>
@@ -74,7 +74,7 @@ async function UpcomingGamesSection() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
   return (
     <main className="min-h-screen bg-background">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -111,15 +111,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Section Catégories avec Suspense */}
-        <Suspense fallback={<GenreSectionSkeleton />}>
-          <GenreSection />
-        </Suspense>
+        {/* Section Genres */}
+        <GenreSection />
 
-        {/* Section Jeux à venir avec Suspense */}
-        <Suspense fallback={<UpcomingGamesSectionSkeleton />}>
-          <UpcomingGamesSection />
-        </Suspense>
+        {/* Section Jeux à venir */}
+        <UpcomingGamesSection />
 
         {/* Section Communauté */}
         <section className="py-12 md:py-16 bg-muted/50 rounded-2xl">
