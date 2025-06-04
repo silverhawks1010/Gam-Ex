@@ -1,0 +1,11 @@
+version: '3'
+services:
+  libretranslate:
+    image: libretranslate/libretranslate
+    ports:
+      - "5000:5000"
+    environment:
+      - LT_LOAD_ONLY=en,fr
+      - LT_DISABLE_WEB_UI=true
+    volumes:
+      - ./lt_data:/home/libretranslate/.local/share/libretranslate
