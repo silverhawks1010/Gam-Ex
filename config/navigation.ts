@@ -18,7 +18,7 @@ export const siteConfig = {
   auth: {
     login: {
       title: "Connexion",
-      href: "/login",
+      href: "/auth/login",
     },
   },
 } as const
