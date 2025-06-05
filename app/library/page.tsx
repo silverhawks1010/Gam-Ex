@@ -5,6 +5,7 @@ import { gameService } from "@/lib/services/gameService";
 import { Suspense } from "react";
 import { Genre, Platform, Game } from "@/types/game";
 import { genreTranslations } from "@/config/genres";
+import Link from 'next/link';
 
 interface LibraryProps {
   searchParams: Promise<{
@@ -24,14 +25,9 @@ interface LibraryProps {
 
 function GamesLoading() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4">
-      {Array.from({ length: 9 }).map((_, i) => (
-        <div key={i} className="flex flex-col space-y-3">
-          <div className="h-[200px] w-full rounded-lg bg-muted animate-pulse" />
-          <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
-          <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
-        </div>
-      ))}
+    <div className="flex flex-col items-center justify-center min-h-[300px] w-full">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-primary border-solid mb-4" />
+      <div className="text-muted-foreground text-lg">Chargement des jeux...</div>
     </div>
   );
 }
@@ -53,7 +49,7 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
     selectedPlatforms = params.platforms.split(",");
   }
   return (
-    <aside className="w-full md:w-64 bg-muted/50 rounded-xl p-4 mb-6 md:mb-0 md:mr-8">
+    <aside className="w-full md:w-64 bg-muted/50 rounded-xl p-4 mb-6 md:mb-0 md:mr-8 h-full">
       <form method="get" className="flex flex-col gap-4">
         <input
           type="text"
@@ -132,6 +128,11 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
   );
 }
 
+function getPageUrl(params: any, page: number) {
+  const url = new URLSearchParams({ ...params, page: String(page) });
+  return `?${url.toString()}`;
+}
+
 async function GamesContent({ params, page }: { params: any; page: number }) {
   // Prépare les filtres pour l'API IGDB
   const search = params.search || '';
@@ -166,21 +167,50 @@ async function GamesContent({ params, page }: { params: any; page: number }) {
     ratingMin
   );
   const games = response.results;
-  const totalPages = Math.ceil(response.count / 20);
+  const totalPages = Math.max(1, Math.ceil(response.count / 20));
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-4">
         {games.length === 0 ? (
           <div className="col-span-full text-center text-muted-foreground">Aucun jeu trouvé.</div>
         ) : (
           games.map((game: Game) => <GameCard key={game.id} game={game} />)
         )}
       </div>
-      <div className="flex items-center gap-2 justify-center">
-        <button disabled={page === 1} className="border rounded px-3 py-1" form="filtersForm" name="page" value={page - 1}>Précédent</button>
-        <span>Page {page} / {totalPages || 1}</span>
-        <button disabled={page === totalPages || totalPages === 0} className="border rounded px-3 py-1" form="filtersForm" name="page" value={page + 1}>Suivant</button>
+      <div className="flex items-center gap-2 justify-center mt-6">
+        <Link
+          href={getPageUrl(params, page - 1)}
+          className={`border rounded px-3 py-1 ${page === 1 ? 'opacity-50 pointer-events-none' : 'hover:bg-primary/10'}`}
+          aria-disabled={page === 1}
+        >
+          Précédent
+        </Link>
+        <form method="get" className="flex items-center gap-2">
+          {/* Conserve tous les filtres actifs */}
+          {Object.entries(params).map(([key, value]) =>
+            key !== "page" ? (
+              <input key={key} type="hidden" name={key} value={value} />
+            ) : null
+          )}
+          <span>Page</span>
+          <input
+            type="number"
+            name="page"
+            min={1}
+            max={totalPages}
+            defaultValue={page}
+            className="w-16 border rounded px-2 py-1 text-center bg-background"
+          />
+          <span>/ {totalPages}</span>
+        </form>
+        <Link
+          href={getPageUrl(params, page + 1)}
+          className={`border rounded px-3 py-1 ${page === totalPages ? 'opacity-50 pointer-events-none' : 'hover:bg-primary/10'}`}
+          aria-disabled={page === totalPages}
+        >
+          Suivant
+        </Link>
       </div>
     </>
   );
@@ -188,23 +218,25 @@ async function GamesContent({ params, page }: { params: any; page: number }) {
 
 export default async function Library({ searchParams }: LibraryProps) {
   const params = await searchParams;
-  const page = Number(params.page) || 1;
+  const page = Math.max(1, Number(params.page) || 1);
   const genres = await gameService.getGenres();
   const platforms = await gameService.getPlatforms();
 
   return (
-    <div className="flex flex-col min-h-screen w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="">
       <Navbar />
-      <main className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full px-4 py-8">
-        <SidebarFilters genres={genres} platforms={platforms} params={params} />
-        <section className="flex-1">
-          <Suspense fallback={<GamesLoading />}>
-            <GamesContent params={params} page={page} />
-          </Suspense>
-        </section>
-      </main>
+      <div className="flex flex-col min-h-screen w-full max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 flex flex-col md:flex-row max-w-[90%] mx-auto w-full px-4 py-8">
+          <SidebarFilters genres={genres} platforms={platforms} params={params} />
+          <section className="flex-1">
+            <Suspense key={page} fallback={<GamesLoading />}>
+              <GamesContent params={params} page={page} />
+            </Suspense>
+          </section>
+        </main>
+      </div>
       <Footer />
-    </div>
+    </section>
   );
 }
  

@@ -434,7 +434,7 @@ class IGDBService {
     ratingMin?: number,
     upcoming?: boolean
   ): Promise<SearchResponse> {
-    const limit = 21;
+    const limit = 20;
     const offset = (page - 1) * limit;
     let whereClauses = [
       'version_parent = null'
@@ -485,6 +485,7 @@ class IGDBService {
       ${sort}
       limit ${limit};
       offset ${offset};
+      count;
     `;
     const results = await this.fetchIGDB("games", searchQuery);
     // Count query
@@ -493,9 +494,10 @@ class IGDBService {
       count;
     `;
     const countResult = await this.fetchIGDB("games/count", countQuery);
+    const totalCount = countResult.count ?? 0;
     return {
-      count: countResult,
-      next: offset + limit < countResult ? page + 1 : null,
+      count: totalCount,
+      next: offset + limit < totalCount ? page + 1 : null,
       previous: page > 1 ? page - 1 : null,
       results: results.map(this.mapIGDBGameToGame),
     };
@@ -504,7 +506,7 @@ class IGDBService {
   async getGameDetails(id: number): Promise<Game> {
     const fields = [
       "*", "age_ratings.*", "alternative_names.*", "artworks.*", "bundles.*", "expansions.*", "franchises.*", "game_engines.*", "game_localizations.*", "language_supports.*", "game_modes.*", "genres.*", "involved_companies.*", "platforms.*", "player_perspectives.*", "release_dates.*", "screenshots.*", "similar_games.*", "themes.*", "videos.*", "websites.*", "involved_companies.company.*", "language_supports.language.*", "language_supports.language_support_type.*", "expansions.cover.url", "dlcs.cover.url", "dlcs.name", "dlcs.slug", "dlcs.rating", "dlcs.rating_count", "dlcs.genres.name", "dlcs.platforms.name", "dlcs.release_dates.date", "expansions.cover.url", "expansions.name", "expansions.slug", "expansions.rating", "expansions.rating_count", "expansions.genres.name", "expansions.platforms.name", "similar_games.name", "similar_games.slug", "similar_games.rating", "similar_games.rating_count", "similar_games.genres.name", "similar_games.platforms.name", "similar_games.cover.url", "cover.url"
-      , "involved_companies.company.developed.*"
+      , "involved_companies.company.developed.*", "bundles.cover.url"
     ];
     const query = `fields ${fields.join(',')}; where id = ${id}; limit 1;`; // Added limit 1 for safety
 
