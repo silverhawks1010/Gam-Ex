@@ -604,7 +604,7 @@ class IGDBService {
         & status = 3
         & first_release_date > ${Math.floor(Date.now() / 1000)};
       sort hypes desc;
-      limit 50;
+      limit 5;
     `;
   
   
