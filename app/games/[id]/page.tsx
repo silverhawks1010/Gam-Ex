@@ -19,6 +19,7 @@ import {
 import { SiSteam, SiItchdotio, SiEpicgames, SiGo } from 'react-icons/si';
 import { IoGameController } from 'react-icons/io5';
 import { MdOutlineShoppingCart } from 'react-icons/md';
+import type { IconType } from 'react-icons';
 
 import { Navbar } from "@/components/molecules/Navbar";
 import { Footer } from "@/components/molecules/Footer";
@@ -26,8 +27,17 @@ import { gameService } from "@/lib/services/gameService";
 import { Game, Genre, Platform, IGDBImage, GameSummary, Video, Website } from "@/types/game";
 import { RatingImage } from "@/components/atoms/RatingImage";
 import { SupportedLanguages } from "@/components/molecules/SupportedLanguages";
-import { GameCard } from '@/components/molecules/GameCard'; // For DLCs/Franchise
-import { MediaCarousel } from '@/components/molecules/MediaCarousel'; // Import du nouveau composant
+import { GameCard } from '@/components/molecules/GameCard';
+import { MediaCarousel } from '@/components/molecules/MediaCarousel';
+
+// Types pour les icônes
+interface IconProps {
+  className?: string;
+}
+
+const IconWrapper = ({ Icon, className }: { Icon: IconType } & IconProps) => (
+  <Icon className={className} />
+);
 
 interface StoreLinkProps {
   id: number;
@@ -102,47 +112,47 @@ const purchasePlatforms = [
   {
     name: 'Steam',
     domain: 'store.steampowered.com',
-    icon: <SiSteam className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={SiSteam} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'GOG',
     domain: 'gog.com',
-    icon: <SiGo className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={SiGo} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'Epic Games',
     domain: 'epicgames.com',
-    icon: <SiEpicgames className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={SiEpicgames} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'Xbox',
     domain: 'xbox.com',
-    icon: <BsXbox className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={BsXbox} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'PlayStation',
-    domain: 'playstation.com',
-    icon: <BsPlaystation className="w-4 h-4 mr-2" />,
+    domain: 'store.playstation.com',
+    icon: <IconWrapper Icon={BsPlaystation} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'Nintendo',
     domain: 'nintendo.com',
-    icon: <BsNintendoSwitch className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={BsNintendoSwitch} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'Itch.io',
     domain: 'itch.io',
-    icon: <SiItchdotio className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={SiItchdotio} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'Apple App Store',
     domain: 'apple.com',
-    icon: <BsApple className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={BsApple} className="w-4 h-4 mr-2" />,
   },
   {
     name: 'Google Play',
     domain: 'play.google.com',
-    icon: <BsGooglePlay className="w-4 h-4 mr-2" />,
+    icon: <IconWrapper Icon={BsGooglePlay} className="w-4 h-4 mr-2" />,
   },
 ];
 
@@ -244,12 +254,14 @@ export default async function GamePage({ params }: PageProps) {
             <h1 className="text-4xl md:text-6xl font-bold mb-3 tracking-tight leading-tight break-words">{game.name}</h1>
             {game.summary && <p className="text-sm md:text-base text-slate-300 max-w-3xl mb-4 line-clamp-2 md:line-clamp-3">{game.summary}</p>}
             <div className="flex flex-wrap gap-2 mb-6">
-              {game.genres?.slice(0, 4).map(g => <Badge key={g.id} variant="secondary" className="bg-white/20 backdrop-blur-sm text-white border-none text-xs md:text-sm">{g.name}</Badge>)}
+              {game.genres?.slice(0, 4).map(g => <Badge key={g.id} variant="secondary" className="bg-white/20 backdrop-blur-sm text-white border-none text-xs md:text-sm">
+                <span>{g.name}</span>
+              </Badge>)}
             </div>
             {officialWebsite && (
               <Button asChild size="lg" className="bg-primary hover:bg-primary/80 text-primary-foreground font-semibold text-base px-8 py-6">
                 <Link href={officialWebsite} target="_blank" rel="noopener noreferrer">
-                  <BsGlobe className="mr-2 h-5 w-5" />
+                  <IconWrapper Icon={BsGlobe} className="mr-2 h-5 w-5" />
                   Site Officiel
                 </Link>
               </Button>
@@ -271,13 +283,13 @@ export default async function GamePage({ params }: PageProps) {
                   </AspectRatio>
                 ) : (
                   <AspectRatio ratio={3 / 4} className="bg-muted flex items-center justify-center rounded-t-lg">
-                    <BsImage className="w-16 h-16 text-muted-foreground" />
+                    <IconWrapper Icon={BsImage} className="w-16 h-16 text-muted-foreground" />
                   </AspectRatio>
                 )}
                 <div className="p-4 space-y-3">
                   {(game.aggregated_rating || game.rating) && (
                     <div className="flex items-center">
-                      <BsStar className="w-5 h-5 text-yellow-400 mr-1.5" />
+                      <IconWrapper Icon={BsStar} className="w-5 h-5 text-yellow-400 mr-1.5" />
                       <span className="font-semibold text-lg">{(game.aggregated_rating || game.rating)?.toFixed(0)}</span>
                       <span className="text-xs text-muted-foreground ml-1">/ 100</span>
                       <span className="text-xs text-muted-foreground ml-2">({(game.aggregated_rating_count || game.ratings_count || 0)} votes)</span>
@@ -285,14 +297,14 @@ export default async function GamePage({ params }: PageProps) {
                   )}
                   {game.first_release_date && (
                     <div className="flex items-center text-sm">
-                      <BsCalendar className="w-4 h-4 text-muted-foreground mr-2" />
+                      <IconWrapper Icon={BsCalendar} className="w-4 h-4 text-muted-foreground mr-2" />
                       <span className="font-medium">Sortie:</span>
                       <span className="text-muted-foreground ml-1.5">{new Date(game.first_release_date * 1000).toLocaleDateString()}</span>
                     </div>
                   )}
                   {game.category !== undefined && (
                      <div className="flex items-center text-sm">
-                       <BsInfoCircle className="w-4 h-4 text-muted-foreground mr-2" />
+                       <IconWrapper Icon={BsInfoCircle} className="w-4 h-4 text-muted-foreground mr-2" />
                        <span className="font-medium">Type:</span>
                        <span className="text-muted-foreground ml-1.5">{translateGameCategory(game.category)}</span>
                      </div>
@@ -304,14 +316,16 @@ export default async function GamePage({ params }: PageProps) {
             <Card className="shadow-lg border-border/60">
               <CardHeader>
                 <CardTitle className="text-base font-semibold text-primary flex items-center">
-                  <BsController className="w-4 h-4 mr-2" />
+                  <IconWrapper Icon={BsController} className="w-4 h-4 mr-2" />
                   Plateformes
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {game.platforms && game.platforms.length > 0 ? 
                   game.platforms.map(({ platform }) => (
-                    <Badge key={platform.id} variant="outline" className="border-primary/50 text-primary bg-primary/10 text-xs">{platform.name}</Badge>
+                    <Badge key={platform.id} variant="outline" className="border-primary/50 text-primary bg-primary/10 text-xs">
+                      <span>{platform.name}</span>
+                    </Badge>
                   ))
                   : <p className="text-xs text-muted-foreground">Non spécifiées</p>}
               </CardContent>
@@ -321,7 +335,7 @@ export default async function GamePage({ params }: PageProps) {
               <Card className="shadow-lg border-border/60">
                 <CardHeader>
                   <CardTitle className="text-base font-semibold text-primary flex items-center">
-                    <BsPeople className="w-4 h-4 mr-2" />
+                    <IconWrapper Icon={BsPeople} className="w-4 h-4 mr-2" />
                     Créateurs
                   </CardTitle>
                 </CardHeader>
@@ -330,7 +344,9 @@ export default async function GamePage({ params }: PageProps) {
                     <div>
                       <h4 className="text-xs font-medium text-muted-foreground mb-1.5">Développeurs</h4>
                       <div className="flex flex-wrap gap-1.5">
-                        {game.developers.map(dev => <Badge key={dev.id} variant="secondary" className="text-xs">{dev.name}</Badge>)}
+                        {game.developers.map(dev => <Badge key={dev.id} variant="secondary" className="text-xs">
+                          <span>{dev.name}</span>
+                        </Badge>)}
                       </div>
                     </div>
                   )}
@@ -338,7 +354,9 @@ export default async function GamePage({ params }: PageProps) {
                     <div>
                       <h4 className="text-xs font-medium text-muted-foreground mb-1.5">Éditeurs</h4>
                       <div className="flex flex-wrap gap-1.5">
-                        {game.publishers.map(pub => <Badge key={pub.id} variant="secondary" className="text-xs">{pub.name}</Badge>)}
+                        {game.publishers.map(pub => <Badge key={pub.id} variant="secondary" className="text-xs">
+                          <span>{pub.name}</span>
+                        </Badge>)}
                       </div>
                     </div>
                   )}
@@ -351,7 +369,7 @@ export default async function GamePage({ params }: PageProps) {
               <Card className="shadow-lg border-border/60">
                 <CardHeader>
                   <CardTitle className="text-base font-semibold text-primary flex items-center">
-                    <MdOutlineShoppingCart className="w-4 h-4 mr-2" />
+                    <IconWrapper Icon={MdOutlineShoppingCart} className="w-4 h-4 mr-2" />
                     Acheter sur une plateforme officielle
                   </CardTitle>
                 </CardHeader>
@@ -372,7 +390,7 @@ export default async function GamePage({ params }: PageProps) {
                         <Link href={website.url} target="_blank" rel="noopener noreferrer">
                           {website.platform.icon}
                           {website.platform.name}
-                          <BsBoxArrowUpRight className="w-3 h-3 ml-auto text-muted-foreground/70" />
+                          <IconWrapper Icon={BsBoxArrowUpRight} className="w-3 h-3 ml-auto text-muted-foreground/70" />
                         </Link>
                       </Button>
                     ))}
@@ -387,7 +405,7 @@ export default async function GamePage({ params }: PageProps) {
               <Card className="shadow-lg border-border/60">
                 <CardHeader>
                   <CardTitle className="text-base font-semibold text-primary flex items-center">
-                    <MdOutlineShoppingCart className="w-4 h-4 mr-2" />
+                    <IconWrapper Icon={MdOutlineShoppingCart} className="w-4 h-4 mr-2" />
                     Où acheter
                   </CardTitle>
                 </CardHeader>
@@ -401,9 +419,9 @@ export default async function GamePage({ params }: PageProps) {
                     return (
                       <Button key={s.id} variant="outline" asChild className="w-full justify-start border-border hover:border-primary/70 hover:bg-primary/5">
                         <Link href={storeUrl || '#'} target="_blank" rel="noopener noreferrer" className={!storeUrl ? 'opacity-50 pointer-events-none' : ''}>
-                          <BsShop className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <IconWrapper Icon={BsShop} className="w-4 h-4 mr-2 text-muted-foreground" />
                           {s.store.name}
-                          <BsBoxArrowUpRight className="w-3 h-3 ml-auto text-muted-foreground/70" />
+                          <IconWrapper Icon={BsBoxArrowUpRight} className="w-3 h-3 ml-auto text-muted-foreground/70" />
                         </Link>
                       </Button>
                     );
@@ -420,7 +438,7 @@ export default async function GamePage({ params }: PageProps) {
               <Card className="shadow-lg border-border/60">
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold text-primary flex items-center">
-                    <BsCameraVideo className="w-5 h-5 mr-2" />
+                    <IconWrapper Icon={BsCameraVideo} className="w-5 h-5 mr-2" />
                     Médias
                   </CardTitle>
                 </CardHeader>
@@ -463,22 +481,26 @@ export default async function GamePage({ params }: PageProps) {
                     {game.game_modes && game.game_modes.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-md mb-2 flex items-center">
-                          <IoGameController className="w-5 h-5 mr-2 text-primary" />
+                          <IconWrapper Icon={IoGameController} className="w-5 h-5 mr-2 text-primary" />
                           Modes de jeu
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {game.game_modes.map(mode => <Badge key={mode.id} variant="secondary">{translateGameMode(mode.name)}</Badge>)}
+                          {game.game_modes.map(mode => <Badge key={mode.id} variant="secondary">
+                            <span>{translateGameMode(mode.name)}</span>
+                          </Badge>)}
                         </div>
                       </div>
                     )}
                     {game.themes && game.themes.length > 0 && (
                       <div>
                         <h4 className="font-semibold text-md mb-2 flex items-center">
-                          <BsTag className="w-5 h-5 mr-2 text-primary" />
+                          <IconWrapper Icon={BsTag} className="w-5 h-5 mr-2 text-primary" />
                           Thèmes
                         </h4>
                         <div className="flex flex-wrap gap-2">
-                          {game.themes.map(theme => <Badge key={theme.id} variant="secondary">{theme.name}</Badge>)}
+                          {game.themes.map(theme => <Badge key={theme.id} variant="secondary">
+                            <span>{theme.name}</span>
+                          </Badge>)}
                         </div>
                       </div>
                     )}
@@ -492,7 +514,7 @@ export default async function GamePage({ params }: PageProps) {
                         <Card className="shadow-lg border-border/60">
                             <CardHeader>
                               <CardTitle className="text-base font-semibold text-primary flex items-center">
-                                <BsPeople className="w-4 h-4 mr-2" />
+                                <IconWrapper Icon={BsPeople} className="w-4 h-4 mr-2" />
                                 Classification
                               </CardTitle>
                             </CardHeader>
@@ -520,12 +542,14 @@ export default async function GamePage({ params }: PageProps) {
                         <Card className="shadow-lg border-border/60">
                             <CardHeader>
                               <CardTitle className="text-base font-semibold text-primary flex items-center">
-                                <BsList className="w-4 h-4 mr-2" />
+                                <IconWrapper Icon={BsList} className="w-4 h-4 mr-2" />
                                 Noms Alternatifs
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="flex flex-wrap gap-2">
-                                {game.alternative_names.map(alt => <Badge key={alt.id} variant="outline" className="text-xs">{alt.name}</Badge>)}
+                                {game.alternative_names.map(alt => <Badge key={alt.id} variant="outline" className="text-xs">
+                                  <span>{alt.name}</span>
+                                </Badge>)}
                             </CardContent>
                         </Card>
                     )}
@@ -533,15 +557,25 @@ export default async function GamePage({ params }: PageProps) {
                          <Card className="shadow-lg border-border/60">
                             <CardHeader>
                               <CardTitle className="text-base font-semibold text-primary flex items-center">
-                                <BsInfoCircle className="w-4 h-4 mr-2" />
+                                <IconWrapper Icon={BsInfoCircle} className="w-4 h-4 mr-2" />
                                 Informations de Version
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2 text-sm">
-                                {game.version_title && <p><span className="font-medium">Titre de version:</span> <Badge variant="outline">{game.version_title}</Badge></p>}
-                                {game.version_parent && <p><span className="font-medium">Version parente:</span> <Link href={`/games/${game.version_parent.id}`} className="text-primary hover:underline"><Badge variant="secondary">{game.version_parent.name}</Badge></Link></p>}
+                                {game.version_title && <p><span className="font-medium">Titre de version:</span> <Badge variant="outline">
+                                  <span>{game.version_title}</span>
+                                </Badge></p>}
+                                {game.version_parent && <p><span className="font-medium">Version parente:</span> <Link href={`/games/${game.version_parent.id}`} className="text-primary hover:underline">
+                                  <Badge variant="secondary">
+                                    <span>{game.version_parent.name}</span>
+                                  </Badge>
+                                </Link></p>}
                                 {game.parent_game && (!game.version_parent || game.parent_game.id !== game.version_parent.id) && 
-                                    <p><span className="font-medium">Basé sur/Port de:</span> <Link href={`/games/${game.parent_game.id}`} className="text-primary hover:underline"><Badge variant="secondary">{game.parent_game.name}</Badge></Link></p>}
+                                    <p><span className="font-medium">Basé sur/Port de:</span> <Link href={`/games/${game.parent_game.id}`} className="text-primary hover:underline">
+                                      <Badge variant="secondary">
+                                        <span>{game.parent_game.name}</span>
+                                      </Badge>
+                                    </Link></p>}
                             </CardContent>
                         </Card>
                     )}
@@ -552,7 +586,7 @@ export default async function GamePage({ params }: PageProps) {
                 {additionalContentList.length > 0 ? (
                   <section>
                     <h2 className="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center">
-                      <BsDisplay className="w-7 h-7 mr-3" />
+                      <IconWrapper Icon={BsDisplay} className="w-7 h-7 mr-3" />
                       Contenu Additionnel
                     </h2>
                     <div className="flex overflow-x-auto space-x-4 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-primary/60 scrollbar-track-transparent">
@@ -592,7 +626,7 @@ export default async function GamePage({ params }: PageProps) {
                 {franchiseGames.results && franchiseGames.results.length > 0 ? (
                   <section>
                     <h2 className="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center">
-                      <BsPeople className="w-7 h-7 mr-3" />
+                      <IconWrapper Icon={BsPeople} className="w-7 h-7 mr-3" />
                       Plus de la franchise {game.franchises?.[0]?.name || ''}
                     </h2>
                     <div className="flex overflow-x-auto space-x-4 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-primary/60 scrollbar-track-transparent">
@@ -616,7 +650,7 @@ export default async function GamePage({ params }: PageProps) {
         {game.similar_games && game.similar_games.length > 0 && (
           <section className="mt-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center">
-              <BsCopy className="w-7 h-7 mr-3" />
+              <IconWrapper Icon={BsCopy} className="w-7 h-7 mr-3" />
               Jeux Similaires
             </h2>
             <div className="flex overflow-x-auto space-x-4 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-primary/60 scrollbar-track-transparent">

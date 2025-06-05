@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { siteConfig } from "@/config/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { FaUserCircle } from "react-icons/fa"
 
 const navIcons: Record<string, React.ReactNode> = {
   Accueil: <Home className="w-4 h-4 mr-1.5" />,
@@ -35,6 +36,7 @@ export function Navbar() {
   const [user, setUser] = useState<any>(null)
   const supabase = createClient()
   const router = useRouter()
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -59,6 +61,24 @@ export function Navbar() {
       subscription.unsubscribe()
     }
   }, [supabase.auth])
+
+  useEffect(() => {
+    const loadProfileAvatar = async () => {
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.avatar_url) {
+          setProfileAvatar(profile.avatar_url);
+        }
+      }
+    };
+
+    loadProfileAvatar();
+  }, [user?.id]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -106,8 +126,15 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0.5 ring-1 ring-primary ring-offset-1 ring-offset-background">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.email} />
-                    <AvatarFallback>{getInitials(user?.email || '')}</AvatarFallback>
+                    {profileAvatar ? (
+                      <AvatarImage src={profileAvatar} alt={user?.email} />
+                    ) : user?.user_metadata?.avatar_url ? (
+                      <AvatarImage src={user.user_metadata.avatar_url} alt={user.email} />
+                    ) : (
+                      <AvatarFallback>
+                        <FaUserCircle className="w-6 h-6" />
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -179,8 +206,15 @@ export function Navbar() {
                   <div className="flex items-center space-x-3 px-3 py-2">
                     <div className="relative h-10 w-10 rounded-full p-0.5 ring-1 ring-primary ring-offset-1 ring-offset-background">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.email} />
-                        <AvatarFallback>{getInitials(user?.email || '')}</AvatarFallback>
+                        {profileAvatar ? (
+                          <AvatarImage src={profileAvatar} alt={user?.email} />
+                        ) : user?.user_metadata?.avatar_url ? (
+                          <AvatarImage src={user.user_metadata.avatar_url} alt={user.email} />
+                        ) : (
+                          <AvatarFallback>
+                            <FaUserCircle className="w-6 h-6" />
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                     </div>
                     <div className="flex flex-col">

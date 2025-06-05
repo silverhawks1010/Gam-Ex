@@ -55,11 +55,6 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-primary/80 to-primary/40" />
           )}
-          {showPrivate && (
-            <div className="absolute top-4 right-4 z-10">
-              <Button size="sm" variant="secondary">Importer une bannière</Button>
-            </div>
-          )}
         </div>
         {/* Avatar/logo */}
         <div className="relative z-20 -mt-16 sm:-mt-20 flex flex-col items-center">
@@ -71,18 +66,10 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                 <FaUserCircle className="w-full h-full text-muted-foreground" />
               )}
             </Avatar>
-            {showPrivate && (
-              <Button size="sm" variant="secondary" className="absolute bottom-2 right-2">Importer un logo</Button>
-            )}
           </div>
           <h1 className="text-3xl font-bold mt-4">{profile.username}</h1>
           <div className="flex items-center gap-2 mt-2">
             <span className="text-muted-foreground">Membre depuis {new Date(profile.created_at).toLocaleDateString()}</span>
-            {showPrivate && (
-              <Button asChild size="sm" variant="outline" className="ml-2">
-                <Link href={`/profile/${id}?public=1`}>Voir mon profil public</Link>
-              </Button>
-            )}
           </div>
         </div>
         {/* Bio/Description */}
@@ -92,11 +79,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
-              {showPrivate ? (
-                <DescriptionEditor initialValue={profile.description || ''} />
-              ) : (
                 <MarkdownDescription source={profile.description || 'Aucune description.'} />
-              )}
             </CardContent>
           </Card>
         </section>

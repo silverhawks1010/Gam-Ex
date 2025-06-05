@@ -18,7 +18,17 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'img.youtube.com',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.discordapp.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ivpgcvrkzcoxjbnildsu.supabase.co',
+        pathname: '/**',
+      },
     ],
   },
 };
