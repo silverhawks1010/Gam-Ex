@@ -29,6 +29,7 @@ import { RatingImage } from "@/components/atoms/RatingImage";
 import { SupportedLanguages } from "@/components/molecules/SupportedLanguages";
 import { GameCard } from '@/components/molecules/GameCard';
 import { MediaCarousel } from '@/components/molecules/MediaCarousel';
+import { AddToListModal } from '@/components/games/AddToListModal';
 
 // Types pour les icônes
 interface IconProps {
@@ -258,14 +259,17 @@ export default async function GamePage({ params }: PageProps) {
                 <span>{g.name}</span>
               </Badge>)}
             </div>
-            {officialWebsite && (
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/80 text-primary-foreground font-semibold text-base px-8 py-6">
-                <Link href={officialWebsite} target="_blank" rel="noopener noreferrer">
-                  <IconWrapper Icon={BsGlobe} className="mr-2 h-5 w-5" />
-                  Site Officiel
-                </Link>
-              </Button>
-            )}
+            <div className="flex gap-4">
+              {officialWebsite && (
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/80 text-primary-foreground font-semibold text-base px-8 py-6">
+                  <Link href={officialWebsite} target="_blank" rel="noopener noreferrer">
+                    <IconWrapper Icon={BsGlobe} className="mr-2 h-5 w-5" />
+                    Site Officiel
+                  </Link>
+                </Button>
+              )}
+              <AddToListModal gameId={game.id.toString()} />
+            </div>
           </div>
         </div>
       </section>

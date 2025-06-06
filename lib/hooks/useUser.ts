@@ -19,10 +19,11 @@ export function useUser() {
     // Récupérer l'utilisateur actuel
     const getUser = async () => {
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        setUser(currentUser);
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
       } catch (error) {
         console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -33,6 +34,7 @@ export function useUser() {
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setLoading(false);
     });
 
     return () => {
