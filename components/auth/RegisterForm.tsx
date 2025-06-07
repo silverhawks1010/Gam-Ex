@@ -13,6 +13,8 @@ import { ArrowLeft, CheckCircle2, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import type { Provider } from '@supabase/supabase-js';
+
 
 export function RegisterForm() {
   const [email, setEmail] = useState('')
@@ -130,8 +132,8 @@ export function RegisterForm() {
 
       // Afficher le message de succès
       setIsSuccess(true)
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -149,15 +151,15 @@ export function RegisterForm() {
         }
       })
       if (error) throw error
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     }
   }
 
   const handleSteamSignIn = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'steam' as any,
+        provider: 'steam' as Provider,
         options: {
           queryParams: {
             access_type: 'offline',
@@ -166,8 +168,8 @@ export function RegisterForm() {
         }
       })
       if (error) throw error
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     }
   }
 
@@ -202,7 +204,7 @@ export function RegisterForm() {
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center text-muted-foreground hover:text-primary transition-colors">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Retour à l'accueil
+                Retour à l&apos;accueil
               </Link>
               <h2 className="text-2xl font-bold">Créer un compte</h2>
             </div>
@@ -318,7 +320,7 @@ export function RegisterForm() {
                       onCheckedChange={(checked) => setAcceptCGU(checked as boolean)}
                     />
                     <Label htmlFor="cgu" className="text-sm">
-                      J'accepte les <a href="/cgu" className="text-primary hover:underline">Conditions Générales d'Utilisation</a>
+                      J&apos;accepte les <a href="/cgu" className="text-primary hover:underline">Conditions Générales d&apos;Utilisation</a>
                     </Label>
                   </div>
 

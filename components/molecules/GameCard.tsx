@@ -108,7 +108,6 @@ const renderStars = (rating?: number, maxRating: number = 100) => {
 
 export function GameCard({ game, contentType }: GameCardProps) {
   const statusInfo = getGameStatusInfo(game, contentType);
-  const displayableSummary = game.summary && game.summary.length > 150 ? `${game.summary.substring(0, 147)}...` : game.summary;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -164,7 +163,7 @@ export function GameCard({ game, contentType }: GameCardProps) {
 
           {game.platforms && game.platforms.length > 0 && (
             <div className="flex flex-wrap gap-2.5 items-center mt-2">
-              {game.platforms.slice(0, 5).map((p: { platform: Platform; requirements?: any }) => {
+              {game.platforms.slice(0, 5).map((p: { platform: Platform; requirements?: unknown }) => {
                 const icon = getPlatformIcon(p.platform.name);
                 return icon ? (
                   <Tooltip key={p.platform.id}>

@@ -114,7 +114,13 @@ export const imageService = {
         return null;
       }
 
-      return type === 'avatar' ? profile.avatar_url : profile.banner_url;
+      // Explicitly check for avatar_url or banner_url based on type
+      if (type === 'avatar' && 'avatar_url' in profile) {
+        return profile.avatar_url;
+      } else if (type === 'banner' && 'banner_url' in profile) {
+        return profile.banner_url;
+      }
+      return null;
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'URL:', error);
       return null;

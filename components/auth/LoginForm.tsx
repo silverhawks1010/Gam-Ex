@@ -12,6 +12,7 @@ import { ArrowLeft, CheckCircle2, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { Provider } from '@supabase/supabase-js'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
@@ -60,8 +61,8 @@ export function LoginForm() {
       
       // Connexion réussie
       setIsSuccess(true)
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -84,25 +85,25 @@ export function LoginForm() {
         }
       })
       if (error) throw error
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     }
   }
 
   const handleSteamSignIn = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'steam' as any,
+        provider: 'steam' as Provider,
         options: {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
           },
         }
-      })
+      });
       if (error) throw error
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     }
   }
 
@@ -132,7 +133,7 @@ export function LoginForm() {
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center text-muted-foreground hover:text-primary transition-colors">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Retour à l'accueil
+                Retour à l&apos;accueil
               </Link>
               <h2 className="text-2xl font-bold">Connexion</h2>
             </div>
@@ -170,7 +171,7 @@ export function LoginForm() {
                 </div>
                 <h3 className="text-xl font-semibold">Connexion réussie !</h3>
                 <p className="text-muted-foreground">
-                  Redirection vers l'accueil dans {countdown} seconde{countdown > 1 ? 's' : ''}...
+                  Redirection vers l&apos;accueil dans {countdown} seconde{countdown > 1 ? 's' : ''}...
                 </p>
               </div>
             ) : (

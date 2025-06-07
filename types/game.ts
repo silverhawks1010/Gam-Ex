@@ -103,6 +103,7 @@ export interface Game {
   url?: string;
   release_dates?: ReleaseDate[];
   genres?: Genre[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   platforms?: { platform: Platform; requirements?: any }[];
   cover?: IGDBImage | { id: number; url: string };
   artworks?: IGDBImage[];

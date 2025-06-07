@@ -33,8 +33,9 @@ const navIcons: Record<string, React.ReactNode> = {
 
 export function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
+  type User = { id: string; email?: string; user_metadata?: { username?: string; avatar_url?: string } };
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<{ username?: string; avatar_url?: string } | null>(null);
   const supabase = createClient()
   const router = useRouter()
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
@@ -82,15 +83,11 @@ export function Navbar() {
     };
 
     loadProfileAvatar();
-  }, [user?.id]);
+  }, [user?.id, supabase]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
-  }
-
-  const getInitials = (email: string) => {
-    return email.slice(0, 2).toUpperCase()
   }
 
   return (

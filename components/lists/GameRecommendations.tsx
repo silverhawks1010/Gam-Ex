@@ -62,7 +62,8 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
       // Retirer le jeu des recommandations puisqu'il est maintenant dans la liste
       setRecommendations(prev => prev.filter(rec => rec.id !== game.id));
       onGameAdded?.();
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       toast({
         title: "Erreur",
         description: "Impossible d'ajouter le jeu à la liste",

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server-client';
 import { Database } from '@/types/supabase';
 
-type Profile = Database['public']['Tables']['profiles']['Row'];
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
 // GET /api/profiles/bulk - Récupérer plusieurs profils par leurs IDs
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerSupabaseClient();
   const { searchParams } = new URL(req.url);
   const ids = searchParams.get('ids')?.split(',') || [];
 
@@ -31,7 +30,7 @@ export async function GET(req: NextRequest) {
 // POST /api/profiles/bulk - Mettre à jour plusieurs profils
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -91,8 +90,8 @@ export async function POST(req: NextRequest) {
 
     console.log('Profils mis à jour:', data);
     return NextResponse.json({ profiles: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur inattendue:', error);
-    return NextResponse.json({ error: error.message || 'Erreur inattendue' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erreur inattendue' }, { status: 500 });
   }
 } 

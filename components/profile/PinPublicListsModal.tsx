@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
 
 interface PinPublicListsModalProps {
   open: boolean;
@@ -31,7 +30,7 @@ export const PinPublicListsModal: React.FC<PinPublicListsModalProps> = ({ open, 
         setPublicLists(data || []);
         setLoading(false);
       });
-  }, [open]);
+  }, [open, supabase]);
 
   useEffect(() => {
     setSelected(initialPinned);
@@ -61,7 +60,6 @@ export const PinPublicListsModal: React.FC<PinPublicListsModalProps> = ({ open, 
               <li key={list.id} className="flex items-center justify-between border-b pb-2">
                 <div>
                   <div className="font-medium">{list.name}</div>
-                  {list.description && <div className="text-xs text-muted-foreground">{list.description}</div>}
                 </div>
                 <button
                   type="button"

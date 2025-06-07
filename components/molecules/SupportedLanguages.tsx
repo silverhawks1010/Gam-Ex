@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Game } from '@/types/game'; // Assuming Game type has language_supports
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 

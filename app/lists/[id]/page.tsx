@@ -6,7 +6,6 @@ import { useUser } from '@/lib/hooks/useUser';
 import { listService } from '@/lib/services/listService';
 import { GameListWithDetails } from '@/lib/types/lists';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -15,7 +14,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Navbar } from '@/components/molecules/Navbar';
 import { Footer } from '@/components/molecules/Footer';
 import { GameCard } from '@/components/molecules/GameCard';
-import { BsPencil, BsTrash, BsShare, BsEye, BsEyeSlash, BsPersonPlus, BsPeople } from 'react-icons/bs';
+import { BsPencil, BsTrash, BsPeople } from 'react-icons/bs';
 import { Game } from '@/types/game';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { use } from 'react';
@@ -44,7 +43,7 @@ export default function ListPage({ params }: ListPageProps) {
   const [games, setGames] = useState<Game[]>([]);
   const [shareEmail, setShareEmail] = useState('');
   const [shareRole, setShareRole] = useState<'observer' | 'editor'>('observer');
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<unknown[]>([]);
   const [showMembersModal, setShowMembersModal] = useState(false);
 
   useEffect(() => {
@@ -56,7 +55,7 @@ export default function ListPage({ params }: ListPageProps) {
     }
 
     loadList();
-  }, [user, loading, resolvedParams.id]);
+  }, [user, loading, resolvedParams.id, router]);
 
   const loadList = async () => {
     try {
@@ -94,7 +93,7 @@ export default function ListPage({ params }: ListPageProps) {
       const res = await fetch(`/api/profiles/bulk?ids=${userIds.join(',')}`);
       const { profiles } = await res.json();
       const membersData = userIds.map(user_id => {
-        const profile = profiles.find((p: any) => p.id === user_id) || {};
+        const profile = profiles.find((p: { id: string }) => p.id === user_id) || {};
         const share = currentList.shares.find(s => s.user_id === user_id);
         return {
           user_id,
@@ -107,6 +106,7 @@ export default function ListPage({ params }: ListPageProps) {
       });
       setMembers(membersData);
     } catch (error) {
+      console.error("Erreur lors du chargement de la liste :", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger la liste",
@@ -132,6 +132,7 @@ export default function ListPage({ params }: ListPageProps) {
         description: "Liste mise à jour avec succès"
       });
     } catch (error) {
+      console.error("Erreur lors de la mise à jour de la liste :", error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la liste",
@@ -153,6 +154,7 @@ export default function ListPage({ params }: ListPageProps) {
         description: "Liste supprimée avec succès"
       });
     } catch (error) {
+      console.error("Erreur lors de la suppression de la liste :", error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la liste",
@@ -176,6 +178,7 @@ export default function ListPage({ params }: ListPageProps) {
         description: "Jeu retiré de la liste"
       });
     } catch (error) {
+      console.error("Erreur lors de la suppression du jeu de la liste :", error);
       toast({
         title: "Erreur",
         description: "Impossible de retirer le jeu de la liste",
@@ -198,6 +201,7 @@ export default function ListPage({ params }: ListPageProps) {
       // Recharger la liste pour mettre à jour les partages
       loadList();
     } catch (error) {
+      console.error("Erreur lors de la partage de la liste :", error);
       toast({
         title: "Erreur",
         description: "Impossible de partager la liste",
@@ -247,8 +251,8 @@ export default function ListPage({ params }: ListPageProps) {
           className="relative rounded-2xl overflow-hidden mb-8 shadow-lg"
           style={{
             background:
-              (list as any).banner_url
-                ? `url(${(list as any).banner_url}) center/cover no-repeat`
+              list.banner_url
+                ? `url(${list.banner_url}) center/cover no-repeat`
                 : 'linear-gradient(90deg, var(--primary), var(--secondary))',
             minHeight: 120,
           }}
@@ -398,7 +402,14 @@ export default function ListPage({ params }: ListPageProps) {
               <div className="space-y-2">
                 <h4 className="font-medium">Membres actuels</h4>
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {members.map(member => (
+                {(members as Array<{
+                    user_id: string;
+                    avatar_url: string | null;
+                    username: string;
+                    email: string;
+                    role: string;
+                    isOwner: boolean;
+                  }>).map(member => (
                     <div key={member.user_id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
@@ -433,6 +444,7 @@ export default function ListPage({ params }: ListPageProps) {
                                   description: `Rôle de ${member.username} mis à jour.` 
                                 });
                               } catch (e) {
+                                console.error("Erreur lors de la modification du rôle :", e);
                                 toast({ 
                                   title: 'Erreur', 
                                   description: 'Impossible de modifier le rôle', 
@@ -462,6 +474,7 @@ export default function ListPage({ params }: ListPageProps) {
                                     description: `${member.username} a été retiré de la liste.` 
                                   });
                                 } catch (e) {
+                                  console.error("Erreur lors de la suppression du membre :", e);
                                   toast({ 
                                     title: 'Erreur', 
                                     description: 'Impossible de retirer le membre', 
@@ -531,7 +544,14 @@ export default function ListPage({ params }: ListPageProps) {
             <BsPeople className="w-5 h-5 text-primary" />
             <span className="font-semibold text-lg">Membres</span>
             <div className="flex -space-x-2 ml-2">
-              {members.slice(0, 5).map((member) => (
+            {(members as Array<{
+              user_id: string;
+              avatar_url: string | null;
+              username: string;
+              email: string;
+              role: string;
+              isOwner: boolean;
+            }>).slice(0, 5).map((member) => (
                 <Avatar key={member.user_id} className="w-8 h-8 border-2 border-background">
                   {member.avatar_url ? (
                     <AvatarImage src={member.avatar_url} alt={member.username} />

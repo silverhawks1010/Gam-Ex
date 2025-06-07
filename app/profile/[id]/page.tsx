@@ -1,7 +1,5 @@
 import { notFound } from 'next/navigation';
-import { Database } from '@/types/supabase';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/molecules/Navbar';
 import { Footer } from '@/components/molecules/Footer';
@@ -47,7 +45,6 @@ interface ProfilePageProps {
   searchParams?: { public?: string };
 }
 
-// Fonction utilitaire pour générer une URL d'icône IGDB
 function getIGDBCoverUrl(coverUrl: string) {
   if (!coverUrl) return '';
   return coverUrl.startsWith('//') ? `https:${coverUrl}` : coverUrl;
@@ -55,10 +52,9 @@ function getIGDBCoverUrl(coverUrl: string) {
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { createServerSupabaseClient } = await import('@/lib/supabase/server-client');
-  const supabase = createServerSupabaseClient();
-  const { id } = params;
+  const supabase = await createServerSupabaseClient();
+  const { id } = await params;
 
-  // 1. Récupérer le profil seul
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
@@ -69,7 +65,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     return notFound();
   }
 
-  // 2. Récupérer les listes épinglées si besoin
   let pinnedLists: PinnedList[] = [];
   if (profile.pinned_lists && profile.pinned_lists.length > 0) {
     const { data: lists } = await supabase
@@ -94,40 +89,38 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       .in('id', profile.pinned_lists);
     pinnedLists = (lists || []).map(list => ({
       ...list,
-      games: (list.game_list_items || []).map((item: any) => ({
-        id: item.id,
-        game_id: item.game_id,
-        added_at: item.added_at,
-        added_by: item.added_by,
-        cover_url: item.games?.cover || null
-      }))
+      games: (list.game_list_items || []).map((item) => {
+        const i = item as { id: string; game_id: string; added_at?: string; added_by?: string; games?: { cover?: string } };
+        return {
+          id: i.id,
+          game_id: i.game_id,
+          added_at: i.added_at,
+          added_by: i.added_by,
+          cover_url: i.games?.cover
+        };
+      })
     }));
   }
 
-  // Récupérer l'utilisateur connecté
   const { data: { user } } = await supabase.auth.getUser();
   const loggedInUserId = user?.id;
   const profileUserId = id;
   const isOwner = loggedInUserId === profileUserId;
 
-  // Récupérer les listes pertinentes selon le scénario
-  let relevantLists: any[] = [];
+  let relevantLists: Array<{ id: string; name: string; is_public: boolean; created_at: string; game_list_items: GameListItem[] }> = [];
   if (isOwner) {
-    // Scénario 1 : toutes les listes dont il est propriétaire OU où il est éditeur
-    // a) Listes possédées
     const { data: ownedLists } = await supabase
       .from('game_lists')
       .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
       .eq('owner_id', loggedInUserId)
       .order('created_at', { ascending: false });
-    // b) Listes où il est éditeur
     const { data: sharedListIds } = await supabase
       .from('game_list_shares')
       .select('list_id')
       .eq('user_id', loggedInUserId)
       .eq('role', 'editor');
-    const sharedIds = (sharedListIds || []).map((s: any) => s.list_id);
-    let sharedLists: any[] = [];
+    const sharedIds = (sharedListIds || []).map((s: { list_id: string }) => s.list_id);
+    let sharedLists: Array<{ id: string; name: string; is_public: boolean; created_at: string; game_list_items: GameListItem[] }> = [];
     if (sharedIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
@@ -136,7 +129,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         .order('created_at', { ascending: false });
       sharedLists = data || [];
     }
-    // Fusionner et dédupliquer
     relevantLists = [
       ...(ownedLists || []),
       ...sharedLists
@@ -144,22 +136,19 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       self.findIndex(l => l.id === list.id) === index
     );
   } else {
-    // Scénario 2 : listes publiques ET (possédées OU partagées avec profileUserId en tant qu'éditeur)
-    // a) Listes publiques possédées
     const { data: publicOwnedLists } = await supabase
       .from('game_lists')
       .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
       .eq('is_public', true)
       .eq('owner_id', profileUserId)
       .order('created_at', { ascending: false });
-    // b) Listes publiques partagées avec profileUserId
     const { data: sharedListIds } = await supabase
       .from('game_list_shares')
       .select('list_id')
       .eq('user_id', profileUserId)
       .eq('role', 'editor');
-    const sharedIds = (sharedListIds || []).map((s: any) => s.list_id);
-    let publicSharedLists: any[] = [];
+    const sharedIds = (sharedListIds || []).map((s: { list_id: string }) => s.list_id);
+    let publicSharedLists: Array<{ id: string; name: string; is_public: boolean; created_at: string; game_list_items: GameListItem[] }> = [];
     if (sharedIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
@@ -169,7 +158,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         .order('created_at', { ascending: false });
       publicSharedLists = data || [];
     }
-    // Fusionner et dédupliquer
     relevantLists = [
       ...(publicOwnedLists || []),
       ...publicSharedLists
@@ -186,9 +174,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      {/* Hero Section with Banner and Avatar */}
       <div className="relative w-full">
-        {/* Banner */}
         <div className="relative w-full h-[300px] md:h-[400px] overflow-hidden">
           {typedProfile.banner_url && typedProfile.banner_url.trim() !== '' ? (
             <Image
@@ -201,16 +187,17 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-primary/80 to-primary/40" />
           )}
-          {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         </div>
-
-        {/* Profile Info */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 flex flex-col items-center">
           <div className="relative">
             <Avatar className="w-32 h-32 ring-4 ring-background shadow-xl flex items-center justify-center">
               {typedProfile.avatar_url && typedProfile.avatar_url.trim() !== '' ? (
-                <img src={typedProfile.avatar_url} alt={typedProfile.username} className="w-full h-full object-cover rounded-full" />
+                <Image 
+                  src={typedProfile.avatar_url} alt={typedProfile.username}
+                  fill
+                  className="w-full h-full object-cover rounded-full" 
+                />
               ) : (
                 <div className="w-full h-full text-muted-foreground">
                   <FaUserCircle size="100%" />
@@ -224,8 +211,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </div>
         </div>
       </div>
-
-      {/* Main Content */}
       <main className="flex-1 container mx-auto px-4 pt-32 pb-12">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
@@ -238,11 +223,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               Toutes les listes
             </TabsTrigger>
           </TabsList>
-
-          {/* Profile Tab */}
           <TabsContent value="profile">
             <div className="grid gap-6">
-              {/* Description */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl">À propos</CardTitle>
@@ -251,7 +233,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   <MarkdownDescription source={typedProfile.description || 'Aucune description.'} />
                 </CardContent>
               </Card>
-              {/* Pinned Lists */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
@@ -318,14 +299,11 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               </Card>
             </div>
           </TabsContent>
-
-          {/* Lists Tab */}
           <TabsContent value="lists">
             <ClientListsManager initialLists={relevantLists} userId={loggedInUserId || ''} />
           </TabsContent>
         </Tabs>
       </main>
-
       <Footer />
     </div>
   );

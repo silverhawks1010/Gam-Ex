@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { gameService } from '@/lib/services/gameService';
-import { createServerClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server-client';
 import { Game } from '@/types/game';
 
 interface GameFrequency {
@@ -12,15 +12,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const listId = await params.id;
-    const supabase = createServerClient();
+  const { id } = await params;
+  const supabase = await createServerSupabaseClient();
 
+  try {
     // Récupérer la liste et ses items (relation game_list_items)
     const { data: list, error } = await supabase
       .from('game_lists')
       .select('id, items:game_list_items(game_id)')
-      .eq('id', listId)
+      .eq('id', id)
       .single();
 
     if (error || !list) {

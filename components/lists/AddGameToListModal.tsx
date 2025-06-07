@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/lib/hooks/useUser';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,16 +17,15 @@ interface AddGameToListModalProps {
 }
 
 // Fonction debounce personnalisée
-function debounce<T extends (...args: any[]) => any>(func: T, delay: number): T {
+function debounce<F extends (arg: string) => unknown>(func: F, delay: number): F {
   let timeoutId: NodeJS.Timeout;
-  return ((...args: any[]) => {
+  return ((...args: [string]) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
-  }) as T;
+  }) as F;
 }
 
 export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalProps) {
-  const { user } = useUser();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +88,8 @@ export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalPr
       setSearchResults([]);
       setSelectedGame(null);
       onGameAdded?.();
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       toast({
         title: "Erreur",
         description: "Impossible d'ajouter le jeu à la liste",
@@ -197,7 +196,7 @@ export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalPr
                             />
                           ) : (
                             <div className="w-[60px] h-[80px] bg-muted rounded-md flex items-center justify-center">
-                              <span className="text-xs text-muted-foreground">Pas d'image</span>
+                              <span className="text-xs text-muted-foreground">Pas d&apos;image</span>
                             </div>
                           )}
                         </div>
@@ -237,7 +236,7 @@ export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalPr
                   />
                 ) : (
                   <div className="w-[60px] h-[80px] bg-muted rounded-md flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">Pas d'image</span>
+                    <span className="text-xs text-muted-foreground">Pas d&apos;image</span>
                   </div>
                 )}
                 <div className="flex-1">

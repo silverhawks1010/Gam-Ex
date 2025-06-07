@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { GameList, GameListItem, GameListShare, GameListWithDetails } from '@/lib/types/lists';
+import { GameList, GameListItem, GameListWithDetails } from '@/lib/types/lists';
 
 const supabase = createClient();
 
@@ -28,6 +28,8 @@ export const listService = {
         .select(`*, items:game_list_items(*), shares:game_list_shares(*)`)
         .eq('owner_id', user.id);
 
+      if (ownerError) throw ownerError;
+
       // 2. Récupérer toutes les listes partagées avec toi
       const { data: sharedListLinks, error: sharedLinksError } = await supabase
         .from('game_list_shares')
@@ -43,6 +45,8 @@ export const listService = {
         if (error) throw error;
         sharedLists = data || [];
       }
+
+      if (sharedLinksError) throw sharedLinksError;
 
       // 3. Fusionner sans doublons
       const allLists = [...(ownerLists || []), ...sharedLists];
@@ -232,7 +236,7 @@ export const listService = {
       }
 
       const isOwner = list.owner_id === user.id;
-      const isEditor = list.shares.some(share => share.user_id === user.id && share.role === 'editor');
+      const isEditor = list.shares.some((share: { user_id: string; role: string; }) => share.user_id === user.id && share.role === 'editor');
 
       if (!isOwner && !isEditor) {
         throw new Error('Vous n\'avez pas les permissions nécessaires pour modifier cette liste');
@@ -297,7 +301,7 @@ export const listService = {
       }
 
       const isOwner = list.owner_id === user.id;
-      const isEditor = list.shares.some(share => share.user_id === user.id && share.role === 'editor');
+      const isEditor = list.shares.some((share: { user_id: string; role: string; }) => share.user_id === user.id && share.role === 'editor');
 
       if (!isOwner && !isEditor) {
         throw new Error('Vous n\'avez pas les permissions nécessaires pour modifier cette liste');

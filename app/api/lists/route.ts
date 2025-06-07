@@ -1,9 +1,29 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server-client';
 import { NextResponse } from 'next/server';
 
+interface GameListItem {
+  id: string;
+  game_id: string;
+  added_at?: string;
+  added_by?: string;
+  cover_url?: string;
+  games?: { cover?: string };
+}
+
+interface GameList {
+  id: string;
+  name: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at?: string;
+  owner_id: string;
+  items?: GameListItem[];
+  shares?: unknown[];
+}
+
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
@@ -14,55 +34,38 @@ export async function GET() {
       return NextResponse.json({ error: 'Utilisateur non authentifié' }, { status: 401 });
     }
 
-    // 1. Récupérer toutes les listes dont tu es propriétaire
-    const { data: ownerLists, error: ownerError } = await supabase
+    const { data: ownerLists } = await supabase
       .from('game_lists')
       .select(`*, items:game_list_items(id, game_id, games:game_id(cover:cover_url)), shares:game_list_shares(*)`)
       .eq('owner_id', user.id);
 
-    if (ownerError) {
-      return NextResponse.json({ error: 'Erreur lors de la récupération des listes' }, { status: 500 });
-    }
-
-    // 2. Récupérer toutes les listes partagées avec toi
-    const { data: sharedListLinks, error: sharedLinksError } = await supabase
+    const { data: sharedListLinks } = await supabase
       .from('game_list_shares')
       .select('list_id')
       .eq('user_id', user.id);
 
-    if (sharedLinksError) {
-      return NextResponse.json({ error: 'Erreur lors de la récupération des listes partagées' }, { status: 500 });
-    }
-
-    const sharedListIds = (sharedListLinks || []).map(l => l.list_id);
-    let sharedLists = [];
+    const sharedListIds = (sharedListLinks || []).map((l: { list_id: string }) => l.list_id);
+    let sharedLists: GameList[] = [];
     if (sharedListIds.length > 0) {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('game_lists')
         .select(`*, items:game_list_items(id, game_id, games:game_id(cover:cover_url)), shares:game_list_shares(*)`)
         .in('id', sharedListIds);
-      if (error) {
-        return NextResponse.json({ error: 'Erreur lors de la récupération des listes partagées' }, { status: 500 });
-      }
       sharedLists = data || [];
     }
 
-    // 3. Fusionner sans doublons
     const allLists = [...(ownerLists || []), ...sharedLists];
     const uniqueLists = Array.from(new Map(allLists.map(list => [list.id, list])).values());
 
-    // 4. Récupérer les profils des propriétaires
     const ownerIds = uniqueLists.map(list => list.owner_id);
     const { data: ownerProfiles } = await supabase
       .from('profiles')
       .select('id, username, avatar_url, email')
       .in('id', ownerIds);
 
-    // 5. Transformer les données pour correspondre au type GameListWithDetails
     const listsWithDetails = uniqueLists.map(list => {
-      const ownerProfile = ownerProfiles?.find(p => p.id === list.owner_id);
-      // Mapper les covers sur chaque item
-      const items = (list.items || []).map((item: any) => ({
+      const ownerProfile = ownerProfiles?.find((p: { id: string }) => p.id === list.owner_id);
+      const items = (list.items || []).map((item: GameListItem) => ({
         ...item,
         cover_url: item.games?.cover || null
       }));
@@ -79,15 +82,15 @@ export async function GET() {
     });
 
     return NextResponse.json(listsWithDetails);
-  } catch (error) {
-    console.error('Erreur dans GET /api/lists:', error);
+  } catch (err) {
+    console.error('Erreur dans GET /api/lists:', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
@@ -119,8 +122,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(list);
-  } catch (error) {
-    console.error('Erreur dans POST /api/lists:', error);
+  } catch (err) {
+    console.error('Erreur dans POST /api/lists:', err);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 } 

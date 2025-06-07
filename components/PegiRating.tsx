@@ -6,7 +6,7 @@ interface PegiRatingProps {
   className?: string;
 }
 
-const PEGI_IMAGES = {
+const PEGI_IMAGES: Record<string, string> = {
   '3': '/images/pegi/pegi-3.png',
   '7': '/images/pegi/pegi-7.png',
   '12': '/images/pegi/pegi-12.png',
@@ -15,12 +15,12 @@ const PEGI_IMAGES = {
 };
 
 // Mapping des pays vers leurs systèmes de classification
-const COUNTRY_RATINGS = {
-  'FR': 'PEGI',
-  'US': 'ESRB',
-  'JP': 'CERO',
-  'DE': 'USK',
-  'AU': 'ACB',
+const COUNTRY_RATINGS: Record<string, string> = {
+  FR: 'PEGI',
+  US: 'ESRB',
+  JP: 'CERO',
+  DE: 'USK',
+  AU: 'ACB',
   // Ajoutez d'autres pays selon vos besoins
 };
 

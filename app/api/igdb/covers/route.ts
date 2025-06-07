@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
       try {
         const coverUrl = await gameService.getGameCover(Number(gameId));
         if (coverUrl) {
-          coverCache[gameId] = coverUrl;
-          result[gameId] = coverUrl;
+          coverCache[gameId] = 'https:' + coverUrl;
+          result[gameId] = 'https:' + coverUrl;
         } else {
           result[gameId] = null;
         }

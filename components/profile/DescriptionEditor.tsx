@@ -43,8 +43,8 @@ export function DescriptionEditor({
       if (!res.ok) throw new Error(data.error || 'Erreur lors de la sauvegarde.');
       setError(null);
       // Optionnel : afficher un toast ou message de succès
-    } catch (e: any) {
-      setError(e.message || 'Erreur lors de la sauvegarde.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de la sauvegarde.');
     } finally {
       setSaving(false);
     }

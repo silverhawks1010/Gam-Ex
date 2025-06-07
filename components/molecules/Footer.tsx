@@ -30,7 +30,7 @@ export const Footer = () => {
             <ul className="space-y-3">
               <li>
                 <Link href="/cgu" className="text-muted-foreground hover:text-primary transition-colors text-base">
-                  Conditions Générales d'Utilisation
+                  Conditions Générales d&apos;Utilisation
                 </Link>
               </li>
               <li>

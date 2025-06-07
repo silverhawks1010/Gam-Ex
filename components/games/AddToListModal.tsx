@@ -35,7 +35,8 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
       const userLists = await listService.getUserLists();
       setLists(userLists);
       console.log(userLists);
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       toast({
         title: "Erreur",
         description: "Impossible de charger vos listes",
@@ -67,7 +68,8 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
       
       setIsOpen(false);
       setSelectedLists([]);
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       toast({
         title: "Erreur",
         description: "Impossible d'ajouter le jeu aux listes",
@@ -98,7 +100,7 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
         <div className="space-y-4 py-4">
           {lists.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Vous n'avez pas encore de liste. Créez-en une depuis la page des listes.
+              Vous n&apos;avez pas encore de liste. Créez-en une depuis la page des listes.
             </p>
           ) : (
             <div className="space-y-2">

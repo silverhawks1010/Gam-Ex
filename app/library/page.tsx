@@ -33,20 +33,21 @@ function GamesLoading() {
 }
 
 // SidebarFilters composant avancé
-function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platforms: Platform[]; params: any }) {
+function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platforms: Platform[]; params: unknown }) {
   // Gestion robuste des genres sélectionnés
   let selectedGenres: string[] = [];
-  if (Array.isArray(params.genres)) {
-    selectedGenres = params.genres;
-  } else if (typeof params.genres === "string") {
-    selectedGenres = params.genres.split(",");
+  const paramsObj = params as { genres?: string | string[] };
+  if (Array.isArray(paramsObj.genres)) {
+    selectedGenres = paramsObj.genres;
+  } else if (typeof paramsObj.genres === "string") {
+    selectedGenres = paramsObj.genres.split(",");
   }
   // Gestion robuste des plateformes sélectionnées
   let selectedPlatforms: string[] = [];
-  if (Array.isArray(params.platforms)) {
-    selectedPlatforms = params.platforms;
-  } else if (typeof params.platforms === "string") {
-    selectedPlatforms = params.platforms.split(",");
+  if (Array.isArray((params as { platforms?: string | string[] }).platforms)) {
+    selectedPlatforms = (params as { platforms?: string | string[] }).platforms as string[];
+  } else if (typeof (params as { platforms?: string | string[] }).platforms === "string") {
+    selectedPlatforms = ((params as { platforms?: string | string[] }).platforms as string).split(",");
   }
   return (
     <aside className="w-full md:w-64 bg-muted/50 rounded-xl p-4 mb-6 md:mb-0 md:mr-8 h-full">
@@ -55,7 +56,7 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
           type="text"
           name="search"
           placeholder="Rechercher par nom..."
-          defaultValue={params.search || ''}
+          defaultValue={(params as { search?: string }).search || ''}
           className="border rounded-md px-3 py-2 w-full"
         />
         <div>
@@ -77,7 +78,7 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
         <div>
           <div className="font-semibold mb-2">Plateformes</div>
           <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-            {platforms.map((platform) => (
+            {platforms.map((platform: Platform) => (
               <label key={platform.id} className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -92,7 +93,11 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
         </div>
         <div>
           <div className="font-semibold mb-2">Statut</div>
-          <select name="status" defaultValue={params.status || ''} className="border rounded-md px-2 py-1 w-full">
+          <select 
+            name="status" 
+            defaultValue={(params as { status?: string }).status || ''} 
+            className="border rounded-md px-2 py-1 w-full"
+          >
             <option value="">Tous</option>
             <option value="0">Sorti</option>
             <option value="1">À venir</option>
@@ -104,17 +109,21 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
         <div>
           <div className="font-semibold mb-2">Année de sortie</div>
           <div className="flex gap-2">
-            <input type="number" name="yearMin" placeholder="Min" className="border rounded-md px-2 py-1 w-1/2" defaultValue={params.yearMin || ''} />
-            <input type="number" name="yearMax" placeholder="Max" className="border rounded-md px-2 py-1 w-1/2" defaultValue={params.yearMax || ''} />
+            <input type="number" name="yearMin" placeholder="Min" className="border rounded-md px-2 py-1 w-1/2" defaultValue={(params as { yearMin?: string }).yearMin || ''} />
+            <input type="number" name="yearMax" placeholder="Max" className="border rounded-md px-2 py-1 w-1/2" defaultValue={(params as { yearMax?: string }).yearMax || ''} />
           </div>
         </div>
         <div>
           <div className="font-semibold mb-2">Note minimale</div>
-          <input type="number" name="ratingMin" min={0} max={100} step={1} className="border rounded-md px-2 py-1 w-full" defaultValue={params.ratingMin || ''} />
+          <input type="number" name="ratingMin" min={0} max={100} step={1} className="border rounded-md px-2 py-1 w-full" defaultValue={(params as { ratingMin?: string }).ratingMin || ''} />
         </div>
         <div>
           <div className="font-semibold mb-2">Tri</div>
-          <select name="ordering" defaultValue={params.ordering || '-hypes'} className="border rounded-md px-2 py-1 w-full">
+          <select
+            name="ordering" 
+            defaultValue={(params as { ordering?: string }).ordering || '-hypes'} 
+            className="border rounded-md px-2 py-1 w-full"
+          >
             <option value="-hypes">Populaires</option>
             <option value="-first_release_date">Date de sortie</option>
             <option value="-rating">Mieux notés</option>
@@ -128,15 +137,25 @@ function SidebarFilters({ genres, platforms, params }: { genres: Genre[]; platfo
   );
 }
 
-function getPageUrl(params: any, page: number) {
-  const url = new URLSearchParams({ ...params, page: String(page) });
-  return `?${url.toString()}`;
+function getPageUrl(params: { [key: string]: string | string[] | undefined }, page: number) {
+  const searchParams = new URLSearchParams();
+  // Ajouter les paramètres existants
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      searchParams.set(key, Array.isArray(value) ? value.join(',') : value);
+    }
+  }
+  
+  // Ajouter la page
+  searchParams.set('page', String(page));
+  
+  return `?${searchParams.toString()}`;
 }
 
-async function GamesContent({ params, page }: { params: any; page: number }) {
+async function GamesContent({ params, page }: { params: { [key: string]: string | string[] | undefined }; page: number }) {
   // Prépare les filtres pour l'API IGDB
-  const search = params.search || '';
-  const ordering = params.ordering || '-hypes';
+  const search = params.search?.toString() || '';
+  const ordering = params.ordering?.toString() || '-hypes';
   const status = params.status ? Number(params.status) : undefined;
   let genreIds: number[] = [];
   if (Array.isArray(params.genres)) {
@@ -190,7 +209,7 @@ async function GamesContent({ params, page }: { params: any; page: number }) {
           {/* Conserve tous les filtres actifs */}
           {Object.entries(params).map(([key, value]) =>
             key !== "page" ? (
-              <input key={key} type="hidden" name={key} value={value} />
+              <input key={key} type="hidden" name={key} value={String(value)} />
             ) : null
           )}
           <span>Page</span>

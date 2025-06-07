@@ -8,7 +8,6 @@ import { gameService } from "@/lib/services/gameService";
 import { Footer } from "@/components/molecules/Footer";
 import { genreIcons, genreTranslations } from "@/config/genres";
 import { Genre, Game } from "@/types/game";
-import { Badge } from "@/components/ui/badge";
 import { BsController, BsDiscord, BsTwitter, BsPeople } from 'react-icons/bs';
 
 // Composant pour la section des genres
@@ -87,7 +86,7 @@ export default async function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
             <div className="space-y-6 md:space-y-8 text-center md:text-left">
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-primary drop-shadow-lg">
-                Découvrez l'Univers du Gaming
+                Découvrez l&apos;Univers du Gaming
               </h1>
               <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto md:mx-0">
                 Votre destination pour explorer, partager et discuter de vos jeux préférés. Rejoignez une communauté passionnée de gamers.
@@ -128,7 +127,7 @@ export default async function Home() {
               Rejoignez Notre Communauté
             </h2>
             <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8">
-              Partagez vos expériences, découvrez de nouveaux jeux et connectez-vous avec d'autres passionnés de gaming.
+              Partagez vos expériences, découvrez de nouveaux jeux et connectez-vous avec d&apos;autres passionnés de gaming.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="bg-primary hover:bg-primary/90 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold flex items-center gap-2 w-full sm:w-auto">

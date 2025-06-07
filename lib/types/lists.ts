@@ -5,6 +5,7 @@ export type GameList = {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  banner_url: string | null;
 };
 
 export type GameListItem = {

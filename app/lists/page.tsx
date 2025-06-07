@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/components/ui/use-toast';
 import { Navbar } from '@/components/molecules/Navbar';
 import { Footer } from '@/components/molecules/Footer';
-import { BsPlus, BsTrash, BsPencil, BsShare, BsEye, BsEyeSlash } from 'react-icons/bs';
+import { BsPlus, BsTrash, BsPencil, BsEye, BsEyeSlash } from 'react-icons/bs';
 
 export default function ListsPage() {
   const { user, loading } = useUser();
@@ -41,7 +41,8 @@ export default function ListsPage() {
     try {
       const userLists = await listService.getUserLists();
       setLists(userLists);
-    } catch (error) {
+    } catch (e) {
+      console.error("Erreur lors du chargement des listes :", e);
       toast({
         title: "Erreur",
         description: "Impossible de charger vos listes",
@@ -70,8 +71,10 @@ export default function ListsPage() {
           items: [], 
           shares: [], 
           owner: { 
-            id: user.id, 
-            username: user.user_metadata?.username || user.email || 'Utilisateur' 
+            id: user.id,
+            username: user.user_metadata?.username || user.email || 'Utilisateur',
+            avatar_url: (user.user_metadata as { avatar_url?: string })?.avatar_url || null,
+            email: user.email || '',
           } 
         }]);
         setNewListName('');
@@ -82,7 +85,8 @@ export default function ListsPage() {
           description: "Liste créée avec succès"
         });
       }
-    } catch (error) {
+    } catch (e) {
+      console.error("Erreur lors de la création de la liste :", e);
       toast({
         title: "Erreur",
         description: "Impossible de créer la liste",
@@ -101,7 +105,8 @@ export default function ListsPage() {
         title: "Succès",
         description: "Liste supprimée avec succès"
       });
-    } catch (error) {
+    } catch (e) {
+      console.error("Erreur lors de la suppression de la liste :", e);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la liste",
@@ -118,7 +123,8 @@ export default function ListsPage() {
         title: "Succès",
         description: "Liste mise à jour avec succès"
       });
-    } catch (error) {
+    } catch (e) {
+      console.error("Erreur lors de la mise à jour de la liste :", e);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la liste",

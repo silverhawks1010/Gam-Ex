@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server-client';
 
-export async function POST(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { email } = await request.json();
     
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createServerSupabaseClient();
     
     // Récupérer l'utilisateur par email
     const { data: { users }, error } = await supabase.auth.admin.listUsers();

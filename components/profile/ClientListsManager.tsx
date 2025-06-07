@@ -11,14 +11,28 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { listService } from '@/lib/services/listService';
+import Image from 'next/image';
+
+interface GameListItem {
+  id: string;
+  game_id: string;
+  cover_url?: string;
+}
+
+interface List {
+  id: string;
+  name: string;
+  items?: GameListItem[];
+  game_list_items?: GameListItem[];
+}
 
 interface ClientListsManagerProps {
-  initialLists: any[];
+  initialLists: List[];
   userId: string;
 }
 
-export function ClientListsManager({ initialLists, userId }: ClientListsManagerProps) {
-  const [lists, setLists] = useState(initialLists);
+export function ClientListsManager({ initialLists }: ClientListsManagerProps) {
+  const [lists, setLists] = useState<List[]>(initialLists);
   const [showCreateList, setShowCreateList] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
@@ -34,7 +48,7 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
       try {
         const userLists = await listService.getUserLists();
         setLists(userLists);
-      } catch (error) {
+      } catch {
         toast({
           title: "Erreur",
           description: "Impossible de charger vos listes",
@@ -53,7 +67,7 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
     // Récupérer tous les game_id sans cover_url à afficher (max 20 pour limiter la charge)
     const missingIds = new Set<string>();
     lists.forEach(list => {
-      (list.items || list.game_list_items || []).slice(0, 10).forEach((item: any) => {
+      (list.items || list.game_list_items || []).slice(0, 10).forEach((item) => {
         if (!item.cover_url && item.game_id && !covers[item.game_id]) {
           missingIds.add(item.game_id);
         }
@@ -98,7 +112,7 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
         title: "Succès",
         description: "Liste créée avec succès"
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Erreur",
         description: "Impossible de créer la liste",
@@ -128,7 +142,7 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
               </CardContent>
             </Card>
           ) : (
-            lists.map((list: any) => (
+            lists.map((list) => (
               <Card key={list.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -144,7 +158,7 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
                 <CardContent>
                   <ScrollArea className="w-full">
                     <div className="flex gap-2 pb-2">
-                      {(list.items || list.game_list_items || []).slice(0, 10).map((item: any) => {
+                      {((list.items || list.game_list_items) ?? []).slice(0, 10).map((item) => {
                         const cover = item.cover_url || covers[item.game_id];
                         return (
                           <div
@@ -153,7 +167,7 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
                           >
                             <div className="w-full h-full flex items-center justify-center text-xs text-center p-1">
                               {cover ? (
-                                <img 
+                                <Image 
                                   src={cover} 
                                   alt={`Cover for game ${item.game_id}`} 
                                   width={64} 
@@ -167,9 +181,9 @@ export function ClientListsManager({ initialLists, userId }: ClientListsManagerP
                           </div>
                         );
                       })}
-                      {(list.items || list.game_list_items) && (list.items || list.game_list_items).length > 10 && (
+                      {((list.items || list.game_list_items) ?? []).length > 10 && (
                         <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-xs">
-                          +{(list.items || list.game_list_items).length - 10}
+                          +{((list.items || list.game_list_items) ?? []).length - 10}
                         </div>
                       )}
                     </div>

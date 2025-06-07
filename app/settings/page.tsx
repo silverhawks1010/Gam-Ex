@@ -10,8 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Navbar } from "@/components/molecules/Navbar";
 import { Footer } from "@/components/molecules/Footer";
 import { 
-  BsPerson, BsShield, BsDiscord, BsImage, 
-  BsEnvelope, BsKey, BsEye, BsEyeSlash 
+  BsPerson, BsShield, BsDiscord, BsImage, BsKey, BsEye, BsEyeSlash 
 } from 'react-icons/bs';
 import { useState, useRef, useEffect } from "react";
 import { imageService } from "@/lib/services/imageService";
@@ -20,10 +19,11 @@ import { useUser } from "@/lib/hooks/useUser";
 import { createClient } from '@/lib/supabase/client';
 import { DescriptionEditor } from "@/components/profile/DescriptionEditor";
 import { PinPublicListsModal } from '@/components/profile/PinPublicListsModal';
+import type { IconType } from "react-icons";
 
 const supabase = createClient();
 
-const IconWrapper = ({ icon: Icon, className }: { icon: any, className?: string }) => (
+const IconWrapper = ({ icon: Icon, className }: { icon: IconType; className?: string }) => (
   <Icon className={className} />
 );
 
@@ -161,7 +161,8 @@ export default function SettingsPage() {
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (e) {
+      console.error("Erreur lors de la mise à jour du profil :", e);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de l'upload",
@@ -419,7 +420,7 @@ export default function SettingsPage() {
                 {/* Informations de base */}
                 <div className="space-y-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="username">Nom d'utilisateur</Label>
+                    <Label htmlFor="username">Nom d&apos;utilisateur</Label>
                     <Input 
                       id="username" 
                       placeholder="Votre nom d'utilisateur"

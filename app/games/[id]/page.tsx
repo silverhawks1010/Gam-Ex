@@ -2,20 +2,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { 
-  BsStar, BsPeople, BsController, BsDisplay, BsTranslate, 
-  BsTag, BsBoxArrowUpRight, BsBag, BsCalendar, BsInfoCircle,
+  BsStar, BsPeople, BsController, BsDisplay, 
+  BsTag, BsBoxArrowUpRight, BsCalendar, BsInfoCircle,
   BsImage, BsCameraVideo, BsList, BsCopy, BsGlobe, BsShop, 
   BsApple, BsGooglePlay, BsNintendoSwitch, BsXbox, BsPlaystation
 } from 'react-icons/bs';
-import { 
-  BsFacebook, BsTwitter, BsTwitch, BsInstagram, BsYoutube,
-  BsReddit
-} from 'react-icons/bs';
+
 import { SiSteam, SiItchdotio, SiEpicgames, SiGo } from 'react-icons/si';
 import { IoGameController } from 'react-icons/io5';
 import { MdOutlineShoppingCart } from 'react-icons/md';
@@ -24,7 +20,7 @@ import type { IconType } from 'react-icons';
 import { Navbar } from "@/components/molecules/Navbar";
 import { Footer } from "@/components/molecules/Footer";
 import { gameService } from "@/lib/services/gameService";
-import { Game, Genre, Platform, IGDBImage, GameSummary, Video, Website } from "@/types/game";
+import { Game, GameSummary, Website } from "@/types/game";
 import { RatingImage } from "@/components/atoms/RatingImage";
 import { SupportedLanguages } from "@/components/molecules/SupportedLanguages";
 import { GameCard } from '@/components/molecules/GameCard';
@@ -173,7 +169,7 @@ export default async function GamePage({ params }: PageProps) {
             {/* <Info className="mx-auto h-12 w-12 text-destructive mb-4" /> */}
             <IconPlaceholder className="mx-auto h-12 w-12 mb-4" />
             <h1 className="text-3xl font-bold text-destructive mb-2">Jeu non trouvé</h1>
-            <p className="text-muted-foreground">Désolé, nous n'avons pas pu charger les détails pour ce jeu.</p>
+            <p className="text-muted-foreground">Désolé, nous n&apos;avons pas pu charger les détails pour ce jeu.</p>
             <Button asChild className="mt-6 bg-primary hover:bg-primary/90 text-primary-foreground">
               <Link href="/library">Retourner à la bibliothèque</Link>
             </Button>
@@ -399,7 +395,7 @@ export default async function GamePage({ params }: PageProps) {
                       </Button>
                     ))}
                   {game.websites.filter(w => getPurchasePlatform(w.url)).length === 0 && (
-                    <div className="text-xs text-muted-foreground">Aucun site d'achat officiel détecté.</div>
+                    <div className="text-xs text-muted-foreground">Aucun site d&apos;achat officiel détecté.</div>
                   )}
                 </CardContent>
               </Card>
