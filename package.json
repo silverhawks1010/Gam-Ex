@@ -27,6 +27,7 @@
     "@supabase/supabase-js": "^2.50.0",
     "@uiw/react-markdown-preview": "^5.1.4",
     "@uiw/react-md-editor": "^4.0.7",
+    "@vercel/analytics": "^1.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.511.0",
