@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import '@uiw/react-md-editor/markdown-editor.css';
@@ -8,11 +8,27 @@ import '@uiw/react-markdown-preview/markdown.css';
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 const MarkdownPreview = dynamic(() => import('@uiw/react-markdown-preview'), { ssr: false });
 
-export function DescriptionEditor({ initialValue }: { initialValue: string }) {
+export function DescriptionEditor({ 
+  initialValue,
+  onChange 
+}: { 
+  initialValue: string;
+  onChange?: (value: string) => void;
+}) {
   const [value, setValue] = useState<string>(initialValue || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const maxLength = 1500;
+
+  useEffect(() => {
+    setValue(initialValue || '');
+  }, [initialValue]);
+
+  const handleChange = (newValue: string | undefined) => {
+    const value = newValue?.slice(0, maxLength) || '';
+    setValue(value);
+    onChange?.(value);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -38,7 +54,7 @@ export function DescriptionEditor({ initialValue }: { initialValue: string }) {
     <div className="flex flex-col gap-2">
       <MDEditor
         value={value}
-        onChange={v => setValue(v?.slice(0, maxLength) || '')}
+        onChange={handleChange}
         height={200}
         preview="edit"
         textareaProps={{

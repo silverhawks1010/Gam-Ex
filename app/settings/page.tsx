@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "@/lib/hooks/useUser";
 import { createClient } from '@/lib/supabase/client';
 import { DescriptionEditor } from "@/components/profile/DescriptionEditor";
+import { PinPublicListsModal } from '@/components/profile/PinPublicListsModal';
 
 const supabase = createClient();
 
@@ -40,8 +41,12 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState({
     username: '',
     email: '',
-    description: ''
+    description: '',
+    pinned_lists: [] as string[]
   });
+
+  // État pour la description
+  const [description, setDescription] = useState('');
 
   // États pour les switches
   const [privacySettings, setPrivacySettings] = useState({
@@ -69,6 +74,8 @@ export default function SettingsPage() {
     confirm: false
   });
 
+  const [showPinModal, setShowPinModal] = useState(false);
+
   // Charger les données au montage du composant
   useEffect(() => {
     if (user?.id) {
@@ -80,17 +87,39 @@ export default function SettingsPage() {
   const loadProfile = async () => {
     if (!user?.id) return;
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('username, email, description')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('username, email, description, pinned_lists')
+        .eq('id', user.id)
+        .single();
 
-    if (profile) {
-      setProfile({
-        username: profile.username || '',
-        email: profile.email || user.email || '',
-        description: profile.description || ''
+      if (error) {
+        console.error('Erreur lors du chargement du profil:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger votre profil",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (profile) {
+        const newDescription = profile.description || '';
+        setProfile({
+          username: profile.username || '',
+          email: profile.email || user.email || '',
+          description: newDescription,
+          pinned_lists: profile.pinned_lists || []
+        });
+        setDescription(newDescription);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement du profil:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du chargement du profil",
+        variant: "destructive"
       });
     }
   };
@@ -152,17 +181,28 @@ export default function SettingsPage() {
     }));
   };
 
+  const handleDescriptionChange = (newDescription: string) => {
+    setDescription(newDescription);
+    setProfile(prev => ({
+      ...prev,
+      description: newDescription
+    }));
+  };
+
   const handleProfileUpdate = async () => {
     if (!user?.id) return;
 
     setIsSaving(true);
     try {
+      // Filtrer les valeurs vides dans pinned_lists
+      const filteredPinnedLists = profile.pinned_lists.filter(id => !!id && id !== "");
       // Mettre à jour le profil
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           username: profile.username,
-          description: profile.description
+          description: description,
+          pinned_lists: filteredPinnedLists
         })
         .eq('id', user.id);
 
@@ -187,6 +227,7 @@ export default function SettingsPage() {
         description: "Votre profil a été mis à jour avec succès"
       });
     } catch (error) {
+      console.error('Erreur lors de la mise à jour du profil:', error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de la mise à jour du profil",
@@ -195,6 +236,15 @@ export default function SettingsPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handlePinnedListsUpdate = async (newPinnedLists: string[]) => {
+    setProfile(prev => ({
+      ...prev,
+      pinned_lists: newPinnedLists
+    }));
+    // Sauvegarder immédiatement les changements
+    await handleProfileUpdate();
   };
 
   const handleAvatarClick = () => {
@@ -391,7 +441,17 @@ export default function SettingsPage() {
 
                   <div className="grid gap-2">
                     <Label htmlFor="description">Description</Label>
-                    <DescriptionEditor initialValue={profile.description || ''} />
+                    <DescriptionEditor 
+                      initialValue={description} 
+                      onChange={handleDescriptionChange}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Listes épinglées</Label>
+                    <Button onClick={() => setShowPinModal(true)}>
+                      Épingler des listes publiques
+                    </Button>
                   </div>
                 </div>
 
@@ -612,6 +672,12 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        <PinPublicListsModal
+          open={showPinModal}
+          initialPinned={profile.pinned_lists || []}
+          onSave={handlePinnedListsUpdate}
+          onClose={() => setShowPinModal(false)}
+        />
       </main>
 
       <Footer />

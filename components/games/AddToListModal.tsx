@@ -34,6 +34,7 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
     try {
       const userLists = await listService.getUserLists();
       setLists(userLists);
+      console.log(userLists);
     } catch (error) {
       toast({
         title: "Erreur",

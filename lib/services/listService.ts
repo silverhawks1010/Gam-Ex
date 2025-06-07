@@ -219,6 +219,25 @@ export const listService = {
         throw new Error('Utilisateur non authentifié');
       }
 
+      // Vérifier les permissions
+      const { data: list, error: listError } = await supabase
+        .from('game_lists')
+        .select('*, shares:game_list_shares(*)')
+        .eq('id', listId)
+        .single();
+
+      if (listError) {
+        console.error('Erreur lors de la récupération de la liste:', listError);
+        throw listError;
+      }
+
+      const isOwner = list.owner_id === user.id;
+      const isEditor = list.shares.some(share => share.user_id === user.id && share.role === 'editor');
+
+      if (!isOwner && !isEditor) {
+        throw new Error('Vous n\'avez pas les permissions nécessaires pour modifier cette liste');
+      }
+
       console.log('Ajout du jeu à la liste pour l\'utilisateur:', user.id);
       const { data: item, error } = await supabase
         .from('game_list_items')
@@ -263,6 +282,25 @@ export const listService = {
       if (!user) {
         console.error('Utilisateur non authentifié');
         throw new Error('Utilisateur non authentifié');
+      }
+
+      // Vérifier les permissions
+      const { data: list, error: listError } = await supabase
+        .from('game_lists')
+        .select('*, shares:game_list_shares(*)')
+        .eq('id', listId)
+        .single();
+
+      if (listError) {
+        console.error('Erreur lors de la récupération de la liste:', listError);
+        throw listError;
+      }
+
+      const isOwner = list.owner_id === user.id;
+      const isEditor = list.shares.some(share => share.user_id === user.id && share.role === 'editor');
+
+      if (!isOwner && !isEditor) {
+        throw new Error('Vous n\'avez pas les permissions nécessaires pour modifier cette liste');
       }
 
       console.log('Suppression du jeu de la liste pour l\'utilisateur:', user.id);

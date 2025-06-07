@@ -20,6 +20,10 @@ class GameService {
     return igdbService.getGameDetails(id);
   }
 
+  async getGameCover(id: number): Promise<string> {
+    return igdbService.getGameCover(id);
+  }
+
   async getDLCs(gameId: number): Promise<SearchResponse> {
     return igdbService.getDLCs(gameId);
   }

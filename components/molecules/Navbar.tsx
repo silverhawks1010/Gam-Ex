@@ -34,6 +34,7 @@ const navIcons: Record<string, React.ReactNode> = {
 export function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
   const supabase = createClient()
   const router = useRouter()
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
@@ -65,14 +66,17 @@ export function Navbar() {
   useEffect(() => {
     const loadProfileAvatar = async () => {
       if (user?.id) {
-        const { data: profile } = await supabase
+        const { data: profileData } = await supabase
           .from('profiles')
-          .select('avatar_url')
+          .select('avatar_url, username')
           .eq('id', user.id)
           .single();
         
-        if (profile?.avatar_url) {
-          setProfileAvatar(profile.avatar_url);
+        if (profileData) {
+          setProfile(profileData);
+          if (profileData.avatar_url) {
+            setProfileAvatar(profileData.avatar_url);
+          }
         }
       }
     };
@@ -141,7 +145,7 @@ export function Navbar() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.user_metadata?.username || user?.email}</p>
+                    <p className="text-sm font-medium leading-none">{ profile?.username || user?.user_metadata?.username || user?.email}</p>
                     <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                   </div>
                 </DropdownMenuLabel>

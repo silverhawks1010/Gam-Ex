@@ -5,8 +5,9 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { id } = await params;
   try {
-    const game = await gameService.getGameDetails(parseInt(params.id));
+    const game = await gameService.getGameDetails(parseInt(id));
     return NextResponse.json(game);
   } catch (error) {
     console.error('Erreur lors de la récupération du jeu:', error);

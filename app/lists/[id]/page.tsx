@@ -15,12 +15,15 @@ import { useToast } from '@/components/ui/use-toast';
 import { Navbar } from '@/components/molecules/Navbar';
 import { Footer } from '@/components/molecules/Footer';
 import { GameCard } from '@/components/molecules/GameCard';
-import { BsPencil, BsTrash, BsShare, BsEye, BsEyeSlash, BsPersonPlus } from 'react-icons/bs';
+import { BsPencil, BsTrash, BsShare, BsEye, BsEyeSlash, BsPersonPlus, BsPeople } from 'react-icons/bs';
 import { Game } from '@/types/game';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { use } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { FaUserCircle } from 'react-icons/fa';
+import { AddGameToListModal } from '@/components/lists/AddGameToListModal';
+import { GameRecommendations } from '@/components/lists/GameRecommendations';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ListPageProps {
   params: Promise<{
@@ -36,13 +39,13 @@ export default function ListPage({ params }: ListPageProps) {
   const [list, setList] = useState<GameListWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
   const [newName, setNewName] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [games, setGames] = useState<Game[]>([]);
   const [shareEmail, setShareEmail] = useState('');
   const [shareRole, setShareRole] = useState<'observer' | 'editor'>('observer');
   const [members, setMembers] = useState<any[]>([]);
+  const [showMembersModal, setShowMembersModal] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -88,11 +91,8 @@ export default function ListPage({ params }: ListPageProps) {
         ...currentList.shares.map(s => s.user_id),
         currentList.owner.id
       ].filter((v, i, arr) => arr.indexOf(v) === i); // unique
-      console.log('currentList.shares:', currentList.shares);
-      console.log('userIds:', userIds);
       const res = await fetch(`/api/profiles/bulk?ids=${userIds.join(',')}`);
       const { profiles } = await res.json();
-      console.log('profiles:', profiles);
       const membersData = userIds.map(user_id => {
         const profile = profiles.find((p: any) => p.id === user_id) || {};
         const share = currentList.shares.find(s => s.user_id === user_id);
@@ -105,7 +105,6 @@ export default function ListPage({ params }: ListPageProps) {
           isOwner: user_id === currentList.owner.id,
         };
       });
-      console.log('membersData:', membersData);
       setMembers(membersData);
     } catch (error) {
       toast({
@@ -192,7 +191,6 @@ export default function ListPage({ params }: ListPageProps) {
       await listService.shareList(list.id, shareEmail, shareRole);
       setShareEmail('');
       setShareRole('observer');
-      setIsSharing(false);
       toast({
         title: "Succès",
         description: "Liste partagée avec succès"
@@ -241,64 +239,87 @@ export default function ListPage({ params }: ListPageProps) {
   const canEdit = isOwner || isEditor;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold">{list.name}</h1>
-            <p className="text-muted-foreground">
-              {list.is_public ? (
-                <span className="flex items-center gap-1">
-                  <BsEye className="w-4 h-4" />
-                  Liste publique
-                </span>
+      <main className="flex-1 w-full max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        {/* HEADER MODERNE */}
+        <section
+          className="relative rounded-2xl overflow-hidden mb-8 shadow-lg"
+          style={{
+            background:
+              (list as any).banner_url
+                ? `url(${(list as any).banner_url}) center/cover no-repeat`
+                : 'linear-gradient(90deg, var(--primary), var(--secondary))',
+            minHeight: 120,
+          }}
+        >
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-end gap-4 p-6">
+            <Avatar className="w-20 h-20 border-4 border-background shadow-lg">
+              {list.owner?.avatar_url ? (
+                <AvatarImage src={list.owner.avatar_url} alt={list.owner.username} />
               ) : (
-                <span className="flex items-center gap-1">
-                  <BsEyeSlash className="w-4 h-4" />
-                  Liste privée
-                </span>
+                <AvatarFallback><FaUserCircle className="w-12 h-12" /></AvatarFallback>
               )}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {canEdit && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <BsPencil className="w-4 h-4 mr-2" />
-                  Modifier
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsSharing(true)}
-                >
-                  <BsPersonPlus className="w-4 h-4 mr-2" />
-                  Partager
-                </Button>
-                {isOwner && (
-                  <Button
-                    variant="destructive"
-                    onClick={handleDeleteList}
-                  >
-                    <BsTrash className="w-4 h-4 mr-2" />
-                    Supprimer
-                  </Button>
+            </Avatar>
+            <div className="flex-1 flex flex-col gap-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground drop-shadow-lg">{list.name}</h1>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${list.is_public ? 'bg-primary/90 text-primary-foreground' : 'bg-secondary/80 text-secondary-foreground'}`}>{list.is_public ? 'Publique' : 'Privée'}</span>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-foreground/80 mt-1 flex-wrap">
+                <span>{games.length} jeu{games.length > 1 ? 'x' : ''}</span>
+                <span>{members.length} membre{members.length > 1 ? 's' : ''}</span>
+                <span>Propriétaire : <span className="font-medium">{list.owner?.username}</span></span>
+              </div>
+            </div>
+            {/* ACTIONS PRINCIPALES */}
+            <div className="flex gap-2 mt-4 sm:mt-0">
+              <TooltipProvider>
+                {canEdit && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="secondary" onClick={() => setIsEditing(true)} aria-label="Modifier la liste">
+                        <BsPencil className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Modifier la liste</TooltipContent>
+                  </Tooltip>
                 )}
-              </>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => router.push('/lists')}
-            >
-              Retour
-            </Button>
+                {canEdit && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="secondary" onClick={() => setShowMembersModal(true)} aria-label="Gérer les membres">
+                        <BsPeople className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Gérer les membres</TooltipContent>
+                  </Tooltip>
+                )}
+                {canEdit && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AddGameToListModal listId={list.id} onGameAdded={loadList} />
+                    </TooltipTrigger>
+                    <TooltipContent>Ajouter un jeu</TooltipContent>
+                  </Tooltip>
+                )}
+                {isOwner && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="destructive" onClick={handleDeleteList} aria-label="Supprimer la liste">
+                        <BsTrash className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Supprimer la liste</TooltipContent>
+                  </Tooltip>
+                )}
+              </TooltipProvider>
+            </div>
           </div>
-        </div>
+        </section>
 
+        {/* MODAL EDIT LIST */}
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
           <DialogContent>
             <DialogHeader>
@@ -337,142 +358,216 @@ export default function ListPage({ params }: ListPageProps) {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isSharing} onOpenChange={setIsSharing}>
-          <DialogContent>
+        {/* MODAL GESTION MEMBRES */}
+        <Dialog open={showMembersModal} onOpenChange={setShowMembersModal}>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Partager la liste</DialogTitle>
+              <DialogTitle>Gestion des membres</DialogTitle>
               <DialogDescription>
-                Partagez cette liste avec d'autres utilisateurs
+                Gérez les membres ayant accès à cette liste et leurs permissions
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-6">
+              {/* Section d'ajout de membre (uniquement pour le propriétaire) */}
+              {isOwner && (
+                <div className="space-y-4 p-4 border rounded-lg">
+                  <h4 className="font-medium">Ajouter un membre</h4>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Email de l'utilisateur"
+                      value={shareEmail}
+                      onChange={(e) => setShareEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Select value={shareRole} onValueChange={(value: 'observer' | 'editor') => setShareRole(value)}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="observer">Lecteur</SelectItem>
+                        <SelectItem value="editor">Éditeur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleShareList} disabled={!shareEmail.trim()}>
+                      Ajouter
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {/* Liste des membres */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email de l'utilisateur</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={shareEmail}
-                  onChange={(e) => setShareEmail(e.target.value)}
-                  placeholder="utilisateur@exemple.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Rôle</Label>
-                <Select value={shareRole} onValueChange={(value: 'observer' | 'editor') => setShareRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un rôle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="observer">Lecteur</SelectItem>
-                    <SelectItem value="editor">Éditeur</SelectItem>
-                  </SelectContent>
-                </Select>
+                <h4 className="font-medium">Membres actuels</h4>
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {members.map(member => (
+                    <div key={member.user_id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          {member.avatar_url ? (
+                            <AvatarImage src={member.avatar_url} alt={member.username} />
+                          ) : (
+                            <AvatarFallback><FaUserCircle className="w-6 h-6" /></AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{member.username}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {member.role === 'owner'
+                              ? 'Propriétaire'
+                              : member.role === 'editor'
+                              ? 'Éditeur'
+                              : 'Lecteur'}
+                          </p>
+                        </div>
+                      </div>
+                      {/* Actions (uniquement pour le propriétaire sur les non-propriétaires) */}
+                      {isOwner && !member.isOwner && member.user_id !== user?.id && (
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={member.role} 
+                            onValueChange={async (value) => {
+                              try {
+                                await listService.shareList(list.id, member.email, value as 'observer' | 'editor');
+                                loadList();
+                                toast({ 
+                                  title: 'Rôle mis à jour', 
+                                  description: `Rôle de ${member.username} mis à jour.` 
+                                });
+                              } catch (e) {
+                                toast({ 
+                                  title: 'Erreur', 
+                                  description: 'Impossible de modifier le rôle', 
+                                  variant: 'destructive' 
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-28">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="observer">Lecteur</SelectItem>
+                              <SelectItem value="editor">Éditeur</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm(`Êtes-vous sûr de vouloir retirer ${member.username} de la liste ?`)) {
+                                try {
+                                  await listService.removeShare(list.id, member.user_id);
+                                  loadList();
+                                  toast({ 
+                                    title: 'Membre retiré', 
+                                    description: `${member.username} a été retiré de la liste.` 
+                                  });
+                                } catch (e) {
+                                  toast({ 
+                                    title: 'Erreur', 
+                                    description: 'Impossible de retirer le membre', 
+                                    variant: 'destructive' 
+                                  });
+                                }
+                              }
+                            }}
+                          >
+                            <BsTrash className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsSharing(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleShareList}>
-                Partager
+              <Button variant="outline" onClick={() => setShowMembersModal(false)}>
+                Fermer
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        <div className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Membres</CardTitle>
-              <CardDescription>Gérez les membres ayant accès à cette liste</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4">
-                {members.map(member => (
-                  <div key={member.user_id} className="flex flex-col items-center p-2 border rounded-md">
-                    <Avatar className="w-12 h-12 mb-1">
-                      {member.avatar_url ? (
-                        <AvatarImage src={member.avatar_url} alt={member.username} />
-                      ) : (
-                        <AvatarFallback><FaUserCircle className="w-8 h-8" /></AvatarFallback>
-                      )}
-                    </Avatar>
-                    <span className="font-semibold">{member.username}</span>
-                    {/* Email caché */}
-                    {/* <span className="text-xs text-muted-foreground">{member.email}</span> */}
-                    <span className="text-sm text-muted-foreground mt-1">
-                      {member.role === 'owner'
-                        ? 'Propriétaire'
-                        : member.role === 'editor'
-                        ? 'Éditeur'
-                        : 'Lecteur'}
-                    </span>
-                    {isOwner && !member.isOwner && member.user_id !== user?.id && (
-                      <>
-                        <Select value={member.role} onValueChange={async (value) => {
-                          try {
-                            await listService.shareList(list.id, member.email, value as 'observer' | 'editor');
-                            loadList();
-                            toast({ title: 'Rôle mis à jour', description: `Rôle de ${member.username} mis à jour.` });
-                          } catch (e) {
-                            toast({ title: 'Erreur', description: 'Impossible de modifier le rôle', variant: 'destructive' });
-                          }
-                        }}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="observer">Lecteur</SelectItem>
-                            <SelectItem value="editor">Éditeur</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="mt-2"
-                          onClick={async () => {
-                            try {
-                              await listService.removeShare(list.id, member.user_id);
-                              loadList();
-                              toast({ title: 'Membre retiré', description: `${member.username} a été retiré.` });
-                            } catch (e) {
-                              toast({ title: 'Erreur', description: 'Impossible de retirer le membre', variant: 'destructive' });
-                            }
-                          }}
-                        >
-                          Retirer
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* GRILLE DE JEUX MODERNE */}
+        <section className="mb-12">
+          {games.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-lg text-muted-foreground mb-2">Aucun jeu dans cette liste</p>
+              {canEdit && <AddGameToListModal listId={list.id} onGameAdded={loadList} />}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {games.map((game) => (
+                <div key={game.id} className="relative group transition-transform hover:scale-[1.03] hover:shadow-xl border border-border rounded-xl overflow-hidden bg-card">
+                  <GameCard game={game} />
+                  {canEdit && (
+                    <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleRemoveGame(game.id)}
+                        aria-label="Retirer le jeu"
+                      >
+                        <BsTrash className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
-        <div className="mx-[10%]">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {games.map((game) => (
-              <div key={game.id} className="relative group">
-                <GameCard game={game} />
-                {canEdit && (
-                  <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemoveGame(game.id)}
-                    >
-                      <BsTrash className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+        {/* BOUTON FLOTTANT AJOUT JEU MOBILE */}
+        {canEdit && (
+          <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+            <AddGameToListModal listId={list.id} onGameAdded={loadList} />
           </div>
-        </div>
-      </main>
+        )}
 
+        {/* SECTION MEMBRES */}
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-3">
+            <BsPeople className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-lg">Membres</span>
+            <div className="flex -space-x-2 ml-2">
+              {members.slice(0, 5).map((member) => (
+                <Avatar key={member.user_id} className="w-8 h-8 border-2 border-background">
+                  {member.avatar_url ? (
+                    <AvatarImage src={member.avatar_url} alt={member.username} />
+                  ) : (
+                    <AvatarFallback><FaUserCircle className="w-6 h-6" /></AvatarFallback>
+                  )}
+                </Avatar>
+              ))}
+              {members.length > 5 && (
+                <div className="w-8 h-8 rounded-full bg-secondary border-2 border-background flex items-center justify-center">
+                  <span className="text-xs font-medium">+{members.length - 5}</span>
+                </div>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-4"
+              onClick={() => setShowMembersModal(true)}
+            >
+              Gérer
+            </Button>
+          </div>
+        </section>
+
+        {/* SECTION RECOMMANDATIONS */}
+        {games.length > 0 && (
+          <section className="mt-8">
+            <GameRecommendations 
+              listId={list.id}
+              canEdit={canEdit}
+              onGameAdded={loadList}
+            />
+          </section>
+        )}
+      </main>
       <Footer />
     </div>
   );

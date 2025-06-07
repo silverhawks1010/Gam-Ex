@@ -503,6 +503,12 @@ class IGDBService {
     };
   }
 
+  async getGameCover(id: number): Promise<string> {
+    const query = `fields cover.url; where id = ${id}; limit 1;`;
+    const results = await this.fetchIGDB("games", query);
+    return results[0].cover.url;
+  }
+
   async getGameDetails(id: number): Promise<Game> {
     const fields = [
       "*", "age_ratings.*", "alternative_names.*", "artworks.*", "bundles.*", "expansions.*", "franchises.*", "game_engines.*", "game_localizations.*", "language_supports.*", "game_modes.*", "genres.*", "involved_companies.*", "platforms.*", "player_perspectives.*", "release_dates.*", "screenshots.*", "similar_games.*", "themes.*", "videos.*", "websites.*", "involved_companies.company.*", "language_supports.language.*", "language_supports.language_support_type.*", "expansions.cover.url", "dlcs.cover.url", "dlcs.name", "dlcs.slug", "dlcs.rating", "dlcs.rating_count", "dlcs.genres.name", "dlcs.platforms.name", "dlcs.release_dates.date", "expansions.cover.url", "expansions.name", "expansions.slug", "expansions.rating", "expansions.rating_count", "expansions.genres.name", "expansions.platforms.name", "similar_games.name", "similar_games.slug", "similar_games.rating", "similar_games.rating_count", "similar_games.genres.name", "similar_games.platforms.name", "similar_games.cover.url", "cover.url"
@@ -511,7 +517,6 @@ class IGDBService {
     const query = `fields ${fields.join(',')}; where id = ${id}; limit 1;`; // Added limit 1 for safety
 
     const results = await this.fetchIGDB("games", query);
-    console.log(results);
     if (!results.length) {
       throw new Error('Game not found');
     }
