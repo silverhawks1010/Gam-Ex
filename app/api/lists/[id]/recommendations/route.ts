@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const listId = params.id;
+    const listId = await params.id;
     const supabase = createServerClient();
 
     // Récupérer la liste et ses items (relation game_list_items)

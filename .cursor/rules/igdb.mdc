@@ -1,0 +1,40 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+General Principles for Cursor when working on the IGDB API:
+
+Prioritize Clarity and Readability: The code generated or suggested should be easy to read and understand, using explicit variable and function names.
+Respect Project Context: Use the naming conventions, code style, and existing frameworks/libraries already present in your project.
+Add Comments When Necessary: Include comments to explain complex logic, specific API calls, or non-trivial implementation choices.
+Specific Rules for IGDB API Integration:
+
+Securely Manage API Keys/Credentials: Never hardcode API keys (Client-ID, Authorization/Bearer Token) directly in the source code. Suggest or use environment variables or a secure configuration file (not versioned).
+Correctly Construct Requests:
+Use the correct HTTP method (primarily POST for IGQL requests).
+Ensure required headers (Client-ID, Authorization: Bearer <access_token>) are correctly included.
+Construct the request body using the IGQL query language (fields, where, limit, offset, sort, etc.).
+Optimize Queries (with IGQL):
+Always explicitly specify the fields you need. Do not use fields *; unless absolutely necessary for development/discovery. This reduces response size and API load.
+Use where to precisely filter results on the API side.
+Use limit and offset for pagination if you expect a large number of results (default limit is often 10, maximum 500).
+Use sort to get results in the desired order.
+Handle Responses:
+Expect to receive a response in JSON format (usually a list of objects).
+Include handling for cases where the response is empty ([]) or doesn't contain the expected data.
+Map raw JSON data to clean data structures/objects specific to your application for easier manipulation.
+Robust Error Handling:
+Include try...catch blocks or equivalents to handle network errors or server-side errors.
+Specifically handle common HTTP status codes returned by an API (e.g., 200 OK, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests, 500 Internal Server Error).
+Analyze the response body in case of errors to get detailed information if the API provides it.
+Manage Rate Limiting: The IGDB API has request limits.
+When a 429 (Too Many Requests) error is received, suggest or implement retry logic with exponential backoff.
+Consider client-side queuing or rate-limiting mechanisms if you anticipate a high volume of requests.
+Data Caching: To reduce redundant API calls and improve performance, suggest or implement a caching layer (in-memory, database, Redis, etc.) for frequently requested data (e.g., game details). Define cache expiration policies.
+Asynchronicity: API calls are blocking operations (I/O). Always use asynchronous programming patterns (async/await, Promises, Callbacks) to avoid blocking your application's execution, especially in a web or UI context.
+API Code Structure:
+Group all IGDB API interaction logic into a dedicated module, class, or service (e.g., IgdbApiService, GameRepository).
+Clearly separate API calling logic from business logic or presentation.
+
+Testing: Suggest writing unit or integration tests for the API access layer, potentially using mocks to simulate API responses and test handling of different scenarios (success, errors, empty data).

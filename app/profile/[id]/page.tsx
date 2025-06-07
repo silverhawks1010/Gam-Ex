@@ -1,4 +1,3 @@
-import { createServerClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { Database } from '@/types/supabase';
 import { Avatar } from '@/components/ui/avatar';
@@ -10,21 +9,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FaUserCircle } from 'react-icons/fa';
 import { MarkdownDescription } from '@/components/profile/MarkdownDescription';
-import { gameService } from '@/lib/services/gameService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BsPin, BsPinFill, BsList, BsPerson, BsBookmark } from 'react-icons/bs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { BsPinFill, BsList, BsPerson } from 'react-icons/bs';
+import { ClientListsManager } from '@/components/profile/ClientListsManager';
 
 interface GameListItem {
   id: string;
   game_id: string;
   added_at?: string;
   added_by?: string;
+  cover_url?: string;
 }
 
 interface PinnedList {
@@ -52,15 +47,16 @@ interface ProfilePageProps {
   searchParams?: { public?: string };
 }
 
-// Fonction utilitaire pour générer une URL d'icône IGDB (à adapter selon ton intégration)
-async function getIGDBCoverUrl(gameId: number) {
-  const coverUrl = await gameService.getGameCover(gameId);
-  return "https://" + coverUrl;
+// Fonction utilitaire pour générer une URL d'icône IGDB
+function getIGDBCoverUrl(coverUrl: string) {
+  if (!coverUrl) return '';
+  return coverUrl.startsWith('//') ? `https:${coverUrl}` : coverUrl;
 }
 
-export default async function ProfilePage({ params, searchParams }: ProfilePageProps) {
-  const supabase = createServerClient();
-  const { id } = await params;
+export default async function ProfilePage({ params }: ProfilePageProps) {
+  const { createServerSupabaseClient } = await import('@/lib/supabase/server-client');
+  const supabase = createServerSupabaseClient();
+  const { id } = params;
 
   // 1. Récupérer le profil seul
   const { data: profile, error } = await supabase
@@ -78,7 +74,23 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   if (profile.pinned_lists && profile.pinned_lists.length > 0) {
     const { data: lists } = await supabase
       .from('game_lists')
-      .select('id, name, description, is_public, created_at, updated_at, game_list_items(id, game_id, added_at, added_by)')
+      .select(`
+        id, 
+        name, 
+        description, 
+        is_public, 
+        created_at, 
+        updated_at, 
+        game_list_items(
+          id, 
+          game_id, 
+          added_at, 
+          added_by,
+          games:game_id(
+            cover:cover_url
+          )
+        )
+      `)
       .in('id', profile.pinned_lists);
     pinnedLists = (lists || []).map(list => ({
       ...list,
@@ -86,7 +98,8 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
         id: item.id,
         game_id: item.game_id,
         added_at: item.added_at,
-        added_by: item.added_by
+        added_by: item.added_by,
+        cover_url: item.games?.cover || null
       }))
     }));
   }
@@ -96,7 +109,6 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   const loggedInUserId = user?.id;
   const profileUserId = id;
   const isOwner = loggedInUserId === profileUserId;
-  const showPrivate = isOwner;
 
   // Récupérer les listes pertinentes selon le scénario
   let relevantLists: any[] = [];
@@ -105,7 +117,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     // a) Listes possédées
     const { data: ownedLists } = await supabase
       .from('game_lists')
-      .select('id, name, is_public, created_at, game_list_items(id, game_id)')
+      .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
       .eq('owner_id', loggedInUserId)
       .order('created_at', { ascending: false });
     // b) Listes où il est éditeur
@@ -119,7 +131,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     if (sharedIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
-        .select('id, name, is_public, created_at, game_list_items(id, game_id)')
+        .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
         .in('id', sharedIds)
         .order('created_at', { ascending: false });
       sharedLists = data || [];
@@ -136,7 +148,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     // a) Listes publiques possédées
     const { data: publicOwnedLists } = await supabase
       .from('game_lists')
-      .select('id, name, is_public, created_at, game_list_items(id, game_id)')
+      .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
       .eq('is_public', true)
       .eq('owner_id', profileUserId)
       .order('created_at', { ascending: false });
@@ -151,7 +163,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     if (sharedIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
-        .select('id, name, is_public, created_at, game_list_items(id, game_id)')
+        .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
         .eq('is_public', true)
         .in('id', sharedIds)
         .order('created_at', { ascending: false });
@@ -171,42 +183,9 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     pinned_lists: pinnedLists
   };
 
-  // --- AJOUT : état et handlers pour la création de liste ---
-  const [showCreateList, setShowCreateList] = useState(false);
-  const [newListName, setNewListName] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [errorCreate, setErrorCreate] = useState('');
-  const [listsState, setListsState] = useState(relevantLists);
-
-  const handleCreateList = async () => {
-    setCreating(true);
-    setErrorCreate('');
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non authentifié');
-      if (!newListName.trim()) throw new Error('Le nom ne peut pas être vide');
-      const { data: list, error } = await supabase
-        .from('game_lists')
-        .insert({ name: newListName, is_public: isPublic, owner_id: user.id })
-        .select('id, name, is_public, created_at, game_list_items(id, game_id)')
-        .single();
-      if (error) throw error;
-      setListsState([list, ...listsState]);
-      setShowCreateList(false);
-      setNewListName('');
-      setIsPublic(true);
-    } catch (e: any) {
-      setErrorCreate(e.message || 'Erreur lors de la création');
-    } finally {
-      setCreating(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      
       {/* Hero Section with Banner and Avatar */}
       <div className="relative w-full">
         {/* Banner */}
@@ -263,8 +242,6 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
           {/* Profile Tab */}
           <TabsContent value="profile">
             <div className="grid gap-6">
-
-
               {/* Description */}
               <Card>
                 <CardHeader>
@@ -274,9 +251,8 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                   <MarkdownDescription source={typedProfile.description || 'Aucune description.'} />
                 </CardContent>
               </Card>
-
-                            {/* Pinned Lists */}
-                            <Card>
+              {/* Pinned Lists */}
+              <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <BsPinFill className="w-5 h-5 text-primary" />
@@ -308,7 +284,17 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                                     className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-muted"
                                   >
                                     <div className="w-full h-full flex items-center justify-center text-xs text-center p-1">
-                                      <Image src={await getIGDBCoverUrl(item.game_id)} alt={`Cover for game ${item.game_id}`} width={64} height={64} />
+                                      {item.cover_url ? (
+                                        <Image 
+                                          src={getIGDBCoverUrl(item.cover_url || '')} 
+                                          alt={`Cover for game ${item.game_id}`} 
+                                          width={64} 
+                                          height={64}
+                                          className="object-cover"
+                                        />
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">?</span>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
@@ -335,93 +321,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
           {/* Lists Tab */}
           <TabsContent value="lists">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Toutes les listes</h2>
-              <Button onClick={() => setShowCreateList(true)}>
-                + Nouvelle liste
-              </Button>
-            </div>
-            <div className="grid gap-6">
-              {listsState.length === 0 ? (
-                <Card>
-                  <CardContent className="flex items-center justify-center h-32">
-                    <p className="text-muted-foreground">Aucune liste disponible</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                listsState.map((list: any) => (
-                  <Card key={list.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xl">{list.name}</CardTitle>
-                        <Link 
-                          href={`/lists/${list.id}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          Voir la liste
-                        </Link>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="w-full">
-                        <div className="flex gap-2 pb-2">
-                          {list.game_list_items?.slice(0, 5).map(async (item: any) => (
-                            <div
-                              key={item.id}
-                              className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-muted"
-                            >
-                              <div className="w-full h-full flex items-center justify-center text-xs text-center p-1">
-                                <Image src={await getIGDBCoverUrl(item.game_id)} alt={`Cover for game ${item.game_id}`} width={64} height={64} />
-                              </div>
-                            </div>
-                          ))}
-                          {list.game_list_items && list.game_list_items.length > 5 && (
-                            <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-xs">
-                              +{list.game_list_items.length - 5}
-                            </div>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-
-            {/* MODAL CREATION LISTE */}
-            <Dialog open={showCreateList} onOpenChange={setShowCreateList}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer une nouvelle liste</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <Label htmlFor="new-list-name">Nom de la liste</Label>
-                  <Input
-                    id="new-list-name"
-                    value={newListName}
-                    onChange={e => setNewListName(e.target.value)}
-                    placeholder="Ma nouvelle liste"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="public-list"
-                      checked={isPublic}
-                      onCheckedChange={setIsPublic}
-                    />
-                    <Label htmlFor="public-list">Liste publique</Label>
-                  </div>
-                  {errorCreate && <div className="text-destructive text-sm">{errorCreate}</div>}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateList(false)}>
-                    Annuler
-                  </Button>
-                  <Button onClick={handleCreateList} disabled={creating}>
-                    {creating ? 'Création...' : 'Créer'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <ClientListsManager initialLists={relevantLists} userId={loggedInUserId || ''} />
           </TabsContent>
         </Tabs>
       </main>
