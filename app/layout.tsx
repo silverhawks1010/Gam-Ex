@@ -9,7 +9,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GameX",
+  title: "Game Area",
   description: "Votre plateforme de jeux préférée",
 };
 
