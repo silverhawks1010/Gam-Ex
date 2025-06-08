@@ -7,7 +7,7 @@ import { GameImage } from "./GameImage";
 import { FaPlaystation, FaXbox, FaWindows, FaApple, FaLinux, FaStar, FaRegStar, FaStarHalfAlt } from "react-icons/fa";
 import { SiNintendoswitch } from "react-icons/si";
 import { genreTranslations } from "@/config/genres";
-import { Game, Genre, Platform } from "@/types/game";
+import { Game, Genre } from "@/types/game";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CircleSlash } from 'lucide-react';
@@ -161,23 +161,22 @@ export function GameCard({ game, contentType }: GameCardProps) {
             </div>
           )}
 
-          {game.platforms && game.platforms.length > 0 && (
-            <div className="flex flex-wrap gap-2.5 items-center mt-2">
-              {game.platforms.slice(0, 5).map((p: { platform: Platform; requirements?: unknown }) => {
-                const icon = getPlatformIcon(p.platform.name);
-                return icon ? (
-                  <Tooltip key={p.platform.id}>
-                    <TooltipTrigger asChild>
-                      <span className="text-lg text-muted-foreground hover:text-foreground transition-colors">{icon}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{p.platform.name}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ) : null;
-              })}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {game.platforms && Array.isArray(game.platforms) && game.platforms.slice(0, 5).map((p: { platform: { id: number; name: string } }) => {
+              if (!p || !p.platform || !p.platform.name) return null;
+              const icon = getPlatformIcon(p.platform.name);
+              return icon ? (
+                <Tooltip key={p.platform.id}>
+                  <TooltipTrigger asChild>
+                    <span className="text-lg text-muted-foreground hover:text-foreground transition-colors">{icon}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{p.platform.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : null;
+            })}
+          </div>
         </CardContent>
 
         <CardFooter className="p-4 mt-auto">

@@ -1,17 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { listService } from '@/lib/services/listService';
-import Image from 'next/image';
+import { ListsGrid } from "@/components/lists/ListsGrid";
 
 interface GameListItem {
   id: string;
@@ -39,8 +36,6 @@ export function ClientListsManager({ initialLists }: ClientListsManagerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingLists, setLoadingLists] = useState(true);
   const { toast } = useToast();
-  // Pour stocker les covers IGDB chargées dynamiquement
-  const [covers, setCovers] = useState<{ [gameId: string]: string }>({});
 
   useEffect(() => {
     const fetchLists = async () => {
@@ -61,36 +56,6 @@ export function ClientListsManager({ initialLists }: ClientListsManagerProps) {
     fetchLists();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Batch fetch des covers IGDB manquantes
-  useEffect(() => {
-    // Récupérer tous les game_id sans cover_url à afficher (max 20 pour limiter la charge)
-    const missingIds = new Set<string>();
-    lists.forEach(list => {
-      (list.items || list.game_list_items || []).slice(0, 10).forEach((item) => {
-        if (!item.cover_url && item.game_id && !covers[item.game_id]) {
-          missingIds.add(item.game_id);
-        }
-      });
-    });
-    if (missingIds.size === 0) return;
-    const idsArr = Array.from(missingIds).slice(0, 20);
-    const idsParam = idsArr.join(",");
-    fetch(`/api/igdb/covers?ids=${idsParam}`)
-      .then(res => res.json())
-      .then((data: { [gameId: string]: string | null }) => {
-        // Ne stocke que les covers valides (string)
-        const validCovers: { [gameId: string]: string } = {};
-        Object.entries(data).forEach(([gameId, url]) => {
-          if (typeof url === 'string' && url) {
-            validCovers[gameId] = url;
-          }
-        });
-        setCovers(prev => ({ ...prev, ...validCovers }));
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lists]);
 
   const handleCreateList = async () => {
     if (!newListName.trim()) {
@@ -131,69 +96,7 @@ export function ClientListsManager({ initialLists }: ClientListsManagerProps) {
           + Nouvelle liste
         </Button>
       </div>
-      {loadingLists ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">Chargement...</div>
-      ) : (
-        <div className="grid gap-6">
-          {lists.length === 0 ? (
-            <Card>
-              <CardContent className="flex items-center justify-center h-32">
-                <p className="text-muted-foreground">Aucune liste disponible</p>
-              </CardContent>
-            </Card>
-          ) : (
-            lists.map((list) => (
-              <Card key={list.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">{list.name}</CardTitle>
-                    <Link 
-                      href={`/lists/${list.id}`}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Voir la liste
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="w-full">
-                    <div className="flex gap-2 pb-2">
-                      {((list.items || list.game_list_items) ?? []).slice(0, 10).map((item) => {
-                        const cover = item.cover_url || covers[item.game_id];
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-muted"
-                          >
-                            <div className="w-full h-full flex items-center justify-center text-xs text-center p-1">
-                              {cover ? (
-                                <Image 
-                                  src={cover} 
-                                  alt={`Cover for game ${item.game_id}`} 
-                                  width={64} 
-                                  height={64}
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground">?</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {((list.items || list.game_list_items) ?? []).length > 10 && (
-                        <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-xs">
-                          +{((list.items || list.game_list_items) ?? []).length - 10}
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
+      <ListsGrid lists={lists} isLoading={loadingLists} />
       <Dialog open={showCreateList} onOpenChange={setShowCreateList}>
         <DialogContent>
           <DialogHeader>

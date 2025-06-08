@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, LogIn, Home, BookOpen, LogOut, Settings, User } from "lucide-react"
+import { Menu, LogIn, LogOut, Settings, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -25,11 +25,6 @@ import { siteConfig } from "@/config/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { FaUserCircle } from "react-icons/fa"
-
-const navIcons: Record<string, React.ReactNode> = {
-  Accueil: <Home className="w-4 h-4 mr-1.5" />,
-  "Bibliothèque": <BookOpen className="w-4 h-4 mr-1.5" />,
-}
 
 export function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -114,7 +109,7 @@ export function Navbar() {
               href={item.href}
               className="text-base font-medium flex items-center gap-1 px-2 py-1 rounded transition-colors duration-200 hover:text-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-              {navIcons[item.title]}
+              {item.icon}
               {item.title}
             </Link>
           ))}
@@ -198,7 +193,7 @@ export function Navbar() {
                   href={item.href}
                   className="text-lg font-medium flex items-center gap-2 px-3 py-2 rounded hover:bg-primary/10 transition-colors"
                 >
-                  {navIcons[item.title]}
+                  {item.icon}
                   {item.title}
                 </Link>
               ))}

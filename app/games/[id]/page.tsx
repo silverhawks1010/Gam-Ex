@@ -180,7 +180,7 @@ export default async function GamePage({ params }: PageProps) {
     );
   }
 
-  const { game, franchiseGames } = data;
+  const { game } = data;
 
   const officialWebsite = game.websites?.find(w => getPurchasePlatform(w.url)?.name === 'Steam' || getPurchasePlatform(w.url)?.name === 'Site Officiel')?.url;
 
@@ -623,18 +623,29 @@ export default async function GamePage({ params }: PageProps) {
               </TabsContent>
 
               <TabsContent value="franchise" className="mt-6">
-                {franchiseGames.results && franchiseGames.results.length > 0 ? (
+                {game.franchises && game.franchises.length > 0 && Array.isArray(game.franchises[0].games) ? (
                   <section>
                     <h2 className="text-2xl md:text-3xl font-bold mb-6 text-primary flex items-center">
                       <IconWrapper Icon={BsPeople} className="w-7 h-7 mr-3" />
                       Plus de la franchise {game.franchises?.[0]?.name || ''}
                     </h2>
                     <div className="flex overflow-x-auto space-x-4 pb-4 -mx-4 px-4 scrollbar-thin scrollbar-thumb-primary/60 scrollbar-track-transparent">
-                      {franchiseGames.results.filter(fg => fg.id !== game.id).map((franchiseItem: Game) => (
-                         <div key={franchiseItem.id} className="min-w-[280px] md:min-w-[300px]">
-                            <GameCard game={franchiseItem} />
-                        </div>
-                      ))}
+                      {game.franchises[0].games
+                        .filter((franchiseItem) => {
+                          const item = franchiseItem as unknown as Game;
+                          return typeof item === 'object' && item !== null && typeof item.category === 'number' && [0,8,9].includes(item.category);
+                        })
+                        .map((franchiseItem) => {
+                          const item = franchiseItem as unknown as Game;
+                          if (item.cover) {
+                            item.cover.url = "https:" + item.cover.url.replace("t_thumb", "t_cover_big");
+                          }
+                          return (
+                            <div key={item.id} className="min-w-[280px] md:min-w-[300px]">
+                              <GameCard game={item} />
+                            </div>
+                          );
+                        })}
                     </div>
                   </section>
                 ) : (

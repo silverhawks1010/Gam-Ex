@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { FaTwitter, FaFacebook, FaInstagram, FaDiscord } from "react-icons/fa";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -39,13 +38,13 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-muted-foreground hover:text-primary transition-colors text-base">
-                  Contact
+                <Link href="/politique-de-confidentialite" className="text-muted-foreground hover:text-primary transition-colors text-base">
+                  Politique de Confidentialité
                 </Link>
               </li>
             </ul>
           </div>
-          {/* Réseaux Sociaux */}
+          {/* Réseaux Sociaux 
           <div className="flex flex-col items-center md:items-end">
             <h3 className="font-semibold mb-4 text-lg">Suivez-nous</h3>
             <div className="flex space-x-6">
@@ -63,10 +62,12 @@ export const Footer = () => {
               </a>
             </div>
           </div>
+          */}
         </div>
         {/* Copyright */}
         <div className="border-t border-border mt-12 pt-8 text-center text-muted-foreground text-sm">
-          <p>© {currentYear} GameX. Tous droits réservés.</p>
+          <p>© {currentYear} GameX. Tous droits réservés.</p> 
+          <p>Powered by <Link href="https://igdb.com" target="_blank" rel="noopener noreferrer" className="underline">IGDB</Link></p>
         </div>
       </div>
     </footer>

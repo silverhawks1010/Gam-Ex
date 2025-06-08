@@ -1,3 +1,6 @@
+import { FaHome, FaBook, FaListOl, FaGamepad } from "react-icons/fa";
+import React from "react";
+
 export const siteConfig = {
   name: "GameX",
   logo: {
@@ -9,10 +12,22 @@ export const siteConfig = {
     {
       title: "Accueil",
       href: "/",
+      icon: React.createElement(FaHome),
     },
     {
       title: "Bibliothèque",
       href: "/library",
+      icon: React.createElement(FaBook),
+    },
+    {
+      title: "Tier List",
+      href: "/tier-list",
+      icon: React.createElement(FaListOl),
+    },
+    {
+      title: "Jeux",
+      href: "/guess-the-game",
+      icon: React.createElement(FaGamepad),
     },
   ],
   auth: {

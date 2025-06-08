@@ -4,26 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/molecules/Navbar';
 import { Footer } from '@/components/molecules/Footer';
 import Image from 'next/image';
-import Link from 'next/link';
 import { FaUserCircle } from 'react-icons/fa';
 import { MarkdownDescription } from '@/components/profile/MarkdownDescription';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { BsPinFill, BsList, BsPerson } from 'react-icons/bs';
 import { ClientListsManager } from '@/components/profile/ClientListsManager';
+import { ListsGrid } from '@/components/lists/ListsGrid';
 
 interface GameListItem {
   id: string;
   game_id: string;
   added_at?: string;
   added_by?: string;
-  cover_url?: string;
 }
 
 interface PinnedList {
   id: string;
   name: string;
-  description: string | null;
   is_public: boolean;
   created_at: string;
   updated_at: string;
@@ -43,11 +40,6 @@ interface Profile {
 interface ProfilePageProps {
   params: { id: string };
   searchParams?: { public?: string };
-}
-
-function getIGDBCoverUrl(coverUrl: string) {
-  if (!coverUrl) return '';
-  return coverUrl.startsWith('//') ? `https:${coverUrl}` : coverUrl;
 }
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
@@ -72,7 +64,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       .select(`
         id, 
         name, 
-        description, 
         is_public, 
         created_at, 
         updated_at, 
@@ -80,13 +71,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           id, 
           game_id, 
           added_at, 
-          added_by,
-          games:game_id(
-            cover:cover_url
-          )
+          added_by
         )
       `)
+
       .in('id', profile.pinned_lists);
+      
+      
     pinnedLists = (lists || []).map(list => ({
       ...list,
       games: (list.game_list_items || []).map((item) => {
@@ -101,6 +92,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       })
     }));
   }
+
+  
 
   const { data: { user } } = await supabase.auth.getUser();
   const loggedInUserId = user?.id;
@@ -242,54 +235,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 </CardHeader>
                 <CardContent>
                   {pinnedLists && pinnedLists.length > 0 ? (
-                    <div className="grid gap-6">
-                      {pinnedLists.map((list: PinnedList) => (
-                        <Card key={list.id} className="hover:shadow-lg transition-shadow">
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg">{list.name}</CardTitle>
-                              <Link 
-                                href={`/lists/${list.id}`}
-                                className="text-sm text-primary hover:underline"
-                              >
-                                Voir la liste
-                              </Link>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <ScrollArea className="w-full">
-                              <div className="flex gap-2 pb-2">
-                                {list.games.slice(0, 5).map((item: GameListItem) => (
-                                  <div
-                                    key={item.id}
-                                    className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-muted"
-                                  >
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-center p-1">
-                                      {item.cover_url ? (
-                                        <Image 
-                                          src={getIGDBCoverUrl(item.cover_url || '')} 
-                                          alt={`Cover for game ${item.game_id}`} 
-                                          width={64} 
-                                          height={64}
-                                          className="object-cover"
-                                        />
-                                      ) : (
-                                        <span className="text-xs text-muted-foreground">?</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                                {list.games.length > 5 && (
-                                  <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-xs">
-                                    +{list.games.length - 5}
-                                  </div>
-                                )}
-                              </div>
-                            </ScrollArea>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                    <ListsGrid lists={pinnedLists}  />
                   ) : (
                     <div className="text-muted-foreground text-center py-8">
                       Aucune liste épinglée

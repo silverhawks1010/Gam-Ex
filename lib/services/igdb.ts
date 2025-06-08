@@ -47,6 +47,31 @@ const mapToGameSummary = (apiGame: any): GameSummary | undefined => {
   };
 };
 
+// Types explicites pour le cache franchises
+interface FranchiseGame {
+  id: number;
+  name: string;
+  slug?: string;
+  cover?: { url: string };
+  category?: number;
+  hypes?: number;
+  rating?: number;
+  rating_count?: number;
+}
+interface Franchise {
+  id: number;
+  name: string;
+  slug?: string;
+  url?: string;
+  games?: FranchiseGame[];
+}
+interface FranchiseCache {
+  data: Franchise[];
+  timestamp: number;
+}
+// Ajout d'un cache mémoire simple pour les franchises populaires
+let franchisesCache: FranchiseCache | null = null;
+
 class IGDBService {
   private readonly baseUrl = "https://api.igdb.com/v4";
   private readonly clientId = process.env.IGDB_CLIENT_ID;
@@ -77,7 +102,7 @@ class IGDBService {
     return this.accessToken;
   }
 
-  private async fetchIGDB(endpoint: string, query: string) {
+  public async fetchIGDB(endpoint: string, query: string) {
     const token = await this.getAccessToken();
     const response = await fetch(`${this.baseUrl}/${endpoint}`, {
       method: "POST",
@@ -380,9 +405,11 @@ class IGDBService {
     yearMin?: number,
     yearMax?: number,
     ratingMin?: number,
-    upcoming?: boolean
+    upcoming?: boolean,
+    limitgame?: number,
+    categories?: number[]
   ): Promise<SearchResponse> {
-    const limit = 20;
+    const limit = limitgame ?? 20;
     const offset = (page - 1) * limit;
     const whereClauses = [
       'version_parent = null'
@@ -391,6 +418,9 @@ class IGDBService {
       whereClauses.push(`name ~ *\"${query}\"*`);
     }
 
+    if (categories && categories.length > 0) {
+      whereClauses.push(`category = (${categories.join(',')})`);
+    }
     
     if (upcoming) {
       const now = Math.floor(Date.now() / 1000);
@@ -428,7 +458,7 @@ class IGDBService {
       }
     }
     const searchQuery = `
-      fields id, name, slug, summary, storyline, game_status, first_release_date, release_dates.date, release_dates.platform.name, genres.name, platforms.name, cover.url, rating, rating_count, aggregated_rating, aggregated_rating_count, hypes, follows, screenshots.url, websites.url, websites.category, game_modes.name, themes.name;
+      fields id, name, slug, game_status, first_release_date, release_dates.date, release_dates.platform.name, genres.name, platforms.name, cover.url, rating, rating_count, aggregated_rating, aggregated_rating_count, hypes, follows, screenshots.url, websites.url, websites.category, game_modes.name, themes.name, involved_companies.*, involved_companies.company.*;
       ${where}
       ${sort}
       limit ${limit};
@@ -460,9 +490,10 @@ class IGDBService {
   async getGameDetails(id: number): Promise<Game> {
     const fields = [
       "*", "age_ratings.*", "alternative_names.*", "artworks.*", "bundles.*", "expansions.*", "franchises.*", "game_engines.*", "game_localizations.*", "language_supports.*", "game_modes.*", "genres.*", "involved_companies.*", "platforms.*", "player_perspectives.*", "release_dates.*", "screenshots.*", "similar_games.*", "themes.*", "videos.*", "websites.*", "involved_companies.company.*", "language_supports.language.*", "language_supports.language_support_type.*", "expansions.cover.url", "dlcs.cover.url", "dlcs.name", "dlcs.slug", "dlcs.rating", "dlcs.rating_count", "dlcs.genres.name", "dlcs.platforms.name", "dlcs.release_dates.date", "expansions.cover.url", "expansions.name", "expansions.slug", "expansions.rating", "expansions.rating_count", "expansions.genres.name", "expansions.platforms.name", "similar_games.name", "similar_games.slug", "similar_games.rating", "similar_games.rating_count", "similar_games.genres.name", "similar_games.platforms.name", "similar_games.cover.url", "cover.url"
-      , "involved_companies.company.developed.*", "bundles.cover.url"
+      , "involved_companies.company.developed.*", "franchises.games.*", "franchises.games.platforms.name", "franchises.games.genres.name", "franchises.games.cover.url"
     ];
     const query = `fields ${fields.join(',')}; where id = ${id}; limit 1;`; // Added limit 1 for safety
+    
 
     const results = await this.fetchIGDB("games", query);
     if (!results.length) {
@@ -582,6 +613,232 @@ class IGDBService {
 
     const results = await this.fetchIGDB("games", query);
     return results.map(this.mapIGDBGameToGame);
+  }
+
+  async getUpcomingPopularGames(limit: number = 20, minHype: number = 30): Promise<Game[]> {
+    const now = Math.floor(Date.now() / 1000);
+    const query = `
+      fields id, name, slug, summary, storyline, game_status, first_release_date, release_dates.date, release_dates.platform.name, genres.name, platforms.name, cover.url, rating, rating_count, aggregated_rating, aggregated_rating_count, hypes, follows, screenshots.url, websites.url, websites.category, game_modes.name, themes.name;
+      where version_parent = null
+        & first_release_date > ${now}
+        & (hypes >= ${minHype} | rating >= 70)
+        & (screenshots != null | cover != null);
+      sort hypes desc;
+      limit ${limit};
+    `;
+    const results = await this.fetchIGDB("games", query);
+    return results.map(this.mapIGDBGameToGame);
+  }
+
+  async getRandomGameForGuess({
+    excludeIds = [],
+    yearMin,
+    yearMax,
+    ratingMin,
+    ratingCountMin,
+    platformIds,
+    genreIds,
+    mode,
+  }: {
+    excludeIds?: number[],
+    yearMin?: number,
+    yearMax?: number,
+    ratingMin?: number,
+    ratingCountMin?: number,
+    platformIds?: number[],
+    genreIds?: number[],
+    mode?: string,
+  }) {
+    const allowedCategories = [0, 8, 9];
+    const whereClauses = [
+      'version_parent = null',
+      `category = (${allowedCategories.join(',')})`,
+      '(screenshots != null | cover != null)',
+    ];
+    if (mode === 'upcoming') {
+      const now = Math.floor(Date.now() / 1000);
+      whereClauses.push(`first_release_date > ${now}`);
+      whereClauses.push('(game_status = 7 | game_status = null)');
+      whereClauses.push('hypes >= 50');
+    } else {
+      if (yearMin) whereClauses.push(`first_release_date >= ${Date.UTC(yearMin, 0, 1) / 1000}`);
+      if (yearMax) whereClauses.push(`first_release_date <= ${Date.UTC(yearMax, 11, 31, 23, 59, 59) / 1000}`);
+      if (ratingMin) whereClauses.push(`rating >= ${ratingMin}`);
+      if (ratingCountMin) whereClauses.push(`rating_count >= ${ratingCountMin}`);
+    }
+    if (platformIds && platformIds.length > 0) whereClauses.push(`platforms = [${platformIds.join(',')}]`);
+    if (genreIds && genreIds.length > 0) whereClauses.push(`genres = [${genreIds.join(',')}]`);
+    if (excludeIds && excludeIds.length > 0) {
+      whereClauses.push(`id != (${excludeIds.join(',')})`);
+    }
+    const where = whereClauses.length ? `where ${whereClauses.join(' & ')};` : '';
+
+    // 1. Premier appel : compter le nombre total de jeux valides
+    const countQuery = `
+      ${where}
+      count;
+    `;
+    let countResult;
+    try {
+      countResult = await this.fetchIGDB("games/count", countQuery);
+    } catch (e) {
+      console.error("IGDB COUNT QUERY:", countQuery);
+      throw e;
+    }
+    const totalCount = countResult.count ?? 0;
+    if (!totalCount || totalCount < 1) {
+      return null;
+    }
+
+    // 2. Calcul du décalage aléatoire
+    const offset = Math.floor(Math.random() * totalCount);
+
+    // 3. Deuxième appel : récupérer un jeu unique à l'offset
+    const searchQuery = `
+      fields id, name, cover.url, screenshots.url, involved_companies.*, involved_companies.company.name, themes.name, first_release_date, category, rating, rating_count, follows, hypes;
+      ${where}
+      sort follows desc;
+      limit 1;
+      offset ${offset};
+    `;
+    let results;
+    try {
+      results = await this.fetchIGDB("games", searchQuery);
+    } catch (e) {
+      console.error("IGDB GAME QUERY:", searchQuery);
+      throw e;
+    }
+    if (!results || results.length === 0) {
+      return null;
+    }
+    return results[0];
+  }
+
+  async getRandomGames(count: number, filters: {
+    yearMax?: number,
+    ratingMin?: number,
+    ratingCountMin?: number,
+    platformIds?: number[],
+    genreIds?: number[],
+  } = {}) {
+    const whereClauses = [
+      'version_parent = null',
+      'cover != null',
+      'rating_count >= 100',
+      'rating >= 60',
+    ];
+
+    if (filters.yearMax) {
+      whereClauses.push(`first_release_date <= ${Date.UTC(filters.yearMax, 11, 31, 23, 59, 59) / 1000}`);
+    } else {
+      whereClauses.push('hypes >= 100');
+    }
+
+    if (filters.ratingMin) {
+      whereClauses.push(`rating >= ${filters.ratingMin}`);
+    }
+    if (filters.ratingCountMin) {
+      whereClauses.push(`rating_count >= ${filters.ratingCountMin}`);
+    }
+    if (filters.platformIds && filters.platformIds.length > 0) {
+      whereClauses.push(`platforms = [${filters.platformIds.join(',')}]`);
+    }
+    if (filters.genreIds && filters.genreIds.length > 0) {
+      whereClauses.push(`genres = [${filters.genreIds.join(',')}]`);
+    }
+
+    const where = whereClauses.length ? `where ${whereClauses.join(' & ')};` : '';
+
+    // 1. Compter le nombre total de jeux valides
+    const countQuery = `
+      ${where}
+      count;
+    `;
+    const countResult = await this.fetchIGDB("games/count", countQuery);
+    const totalCount = countResult.count ?? 0;
+
+    if (!totalCount || totalCount < 1) {
+      return [];
+    }
+
+    // 2. Générer un offset aléatoire
+    const offset = Math.floor(Math.random() * totalCount);
+
+    // 3. Récupérer les jeux à l'offset avec leurs covers
+    const searchQuery = `
+      fields id, name, cover.url, cover.image_id, rating, rating_count, follows, hypes;
+      ${where}
+      sort follows desc;
+      limit ${count};
+      offset ${offset};
+    `;
+
+    const results = await this.fetchIGDB("games", searchQuery);
+    return results.map(this.mapIGDBGameToGame);
+  }
+
+  async getRandomFranchises(count: number = 10, minGames: number = 1) {
+    // Utiliser le cache si disponible et pas trop vieux (1h)
+    if (franchisesCache && Date.now() - franchisesCache.timestamp < 60 * 60 * 1000) {
+      const filtered = franchisesCache.data.filter((franchise: Franchise) => {
+        const games = franchise.games || [];
+        if (games.length < minGames) return false;
+        return games.some((g: FranchiseGame) => (g.hypes && g.hypes > 5));
+      });
+      filtered.sort((a: Franchise, b: Franchise) => {
+        const maxHypeA = Math.max(...(a.games || []).map((g: FranchiseGame) => g.hypes || 0));
+        const maxHypeB = Math.max(...(b.games || []).map((g: FranchiseGame) => g.hypes || 0));
+        return maxHypeB - maxHypeA;
+      });
+      const selected = filtered.slice(0, count);
+      return selected.map((franchise: Franchise) => {
+        const mainGame = (franchise.games || []).find((g: FranchiseGame) => g.cover && [0,8,9].includes(g.category!));
+        return {
+          id: franchise.id,
+          name: franchise.name,
+          slug: franchise.slug,
+          cover: mainGame && mainGame.cover ? (mainGame.cover.url.startsWith('http') ? mainGame.cover.url : 'https:' + mainGame.cover.url.replace('t_thumb', 't_cover_big')) : null,
+        };
+      });
+    }
+    // Sinon, on récupère jusqu'à 2000 franchises (4 pages de 500)
+    const allResults: Franchise[] = [];
+    for (let page = 0; page < 4; page++) {
+      const offset = page * 500;
+      const searchQuery = `
+        fields id, name, slug, games, games.name, games.cover.url, games.category, games.hypes, games.rating, games.rating_count;
+        where games != null;
+        limit 500;
+        offset ${offset};
+        sort id desc;
+      `;
+      const results = await this.fetchIGDB("franchises", searchQuery);
+      allResults.push(...results);
+      if (results.length < 500) break; // Plus de pages
+    }
+    // Mettre en cache
+    franchisesCache = { data: allResults, timestamp: Date.now() };
+    // Filtrer et trier comme avant
+    const filtered = allResults.filter((franchise: Franchise) => {
+      const games = franchise.games || [];
+      if (games.length < minGames) return false;
+      return games.some((g: FranchiseGame) => (g.hypes && g.hypes > 5));
+    });
+    filtered.sort((a: Franchise, b: Franchise) => {
+      const maxHypeA = Math.max(...(a.games || []).map((g: FranchiseGame) => g.hypes || 0));
+      const maxHypeB = Math.max(...(b.games || []).map((g: FranchiseGame) => g.hypes || 0));
+      return maxHypeB - maxHypeA;
+    });
+    const selected = filtered.slice(0, count);
+    return selected.map((franchise: Franchise) => {
+      const mainGame = (franchise.games || []).find((g: FranchiseGame) => g.cover && [0,8,9].includes(g.category!));
+      return {
+        id: franchise.id,
+        name: franchise.name,
+        slug: franchise.slug,
+        cover: mainGame && mainGame.cover ? (mainGame.cover.url.startsWith('http') ? mainGame.cover.url : 'https:' + mainGame.cover.url.replace('t_thumb', 't_cover_big')) : null,
+      };
+    });
   }
 }
 
