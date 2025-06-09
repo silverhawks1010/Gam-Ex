@@ -7,7 +7,7 @@ export async function GET(request: Request, context: { params: { id: string } })
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id } = context.params;
+  const { id } = await context.params;
   const { data, error } = await supabase
     .from('tierlist_items')
     .select('id, tierlist_id, column_id, game_id, franchise_id, position')
