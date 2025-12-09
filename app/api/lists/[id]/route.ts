@@ -10,6 +10,11 @@ interface GameListItem {
   games?: { cover?: string };
 }
 
+interface ListWithItems {
+  id: string;
+  items: GameListItem[] | null;
+}
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -18,7 +23,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .from('game_lists')
       .select(`*, items:game_list_items(id, game_id, games:game_id(cover:cover_url))`)
       .eq('id', id)
-      .single();
+      .single() as { data: ListWithItems | null; error: Error };
     if (error || !list) {
       return NextResponse.json({ error: 'Liste non trouvée' }, { status: 404 });
     }
