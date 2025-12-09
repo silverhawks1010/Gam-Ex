@@ -7,7 +7,7 @@ export async function GET(request: Request, { params }: { params: { id: string; 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id, columnId } = params;
+  const { id, columnId } = await params;
   const { data, error } = await supabase
     .from('tierlist_columns')
     .select('id, tierlist_id, label, color, position')
@@ -29,7 +29,7 @@ export async function PUT(request: Request, { params }: { params: { id: string; 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id, columnId } = params;
+  const { id, columnId } = await params;
   const body = await request.json();
   const { label, color, position } = body;
   if (!label) {
@@ -57,7 +57,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id, columnId } = params;
+  const { id, columnId } = await params;
   const { error } = await supabase
     .from('tierlist_columns')
     .delete()

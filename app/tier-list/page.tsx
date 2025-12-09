@@ -10,15 +10,86 @@ import { Switch } from "@/components/ui/switch";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 
+interface TierList {
+  id: string;
+  name: string;
+  type: "games" | "franchises";
+  is_public: boolean;
+  created_at: string;
+  user_id: string;
+}
 
 export default function TierListHomePage() {
-  const [step, setStep] = useState<"menu" | "form">("menu");
+  const [step, setStep] = useState<"list" | "menu" | "form">("list");
   const [type, setType] = useState<"games" | "franchises" | null>(null);
   const [name, setName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tierLists, setTierLists] = useState<TierList[]>([]);
   const router = useRouter();
+
+  // Charger les tier lists au montage du composant
+  React.useEffect(() => {
+    const fetchTierLists = async () => {
+      try {
+        const res = await fetch("/api/tierlists");
+        if (!res.ok) throw new Error("Erreur lors de la récupération des tier lists");
+        const data = await res.json();
+        setTierLists(data);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Erreur inconnue");
+      }
+    };
+    fetchTierLists();
+  }, []);
+
+  // Affichage de la liste des tier lists
+  if (step === "list") {
+    return (
+      <div>
+        <Navbar />
+        <div className="container mx-auto py-12 px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Mes Tier Lists</h1>
+            <Button onClick={() => setStep("menu")}>Créer une nouvelle tier list</Button>
+          </div>
+          
+          {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tierLists.map((tierList) => (
+              <Card key={tierList.id} className="p-6 hover:shadow-lg transition-shadow">
+                <h3 className="text-xl font-semibold mb-2">{tierList.name}</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Type: {tierList.type === "games" ? "Jeux" : "Franchises"}
+                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">
+                    {tierList.is_public ? "Publique" : "Privée"}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() => router.push(`/tier-list/${tierList.id}`)}
+                  >
+                    Voir
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+          
+          {tierLists.length === 0 && !error && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-4">Vous n&apos;avez pas encore de tier list</p>
+              <Button onClick={() => setStep("menu")}>Créer votre première tier list</Button>
+            </div>
+          )}
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   // Affichage du menu de choix
   if (step === "menu") {
@@ -33,6 +104,9 @@ export default function TierListHomePage() {
             </Button>
             <Button size="lg" className="w-full" onClick={() => { setType("franchises"); setStep("form"); }}>
               Classer les Franchises
+            </Button>
+            <Button variant="secondary" className="w-full" onClick={() => setStep("list")}>
+              Retour à mes tier lists
             </Button>
           </div>
         </div>
@@ -60,7 +134,7 @@ export default function TierListHomePage() {
                   body: JSON.stringify({
                     name,
                     type,
-                    status: isPublic ? "true" : "false",
+                    is_public: isPublic,
                   }),
                 });
                 if (!res.ok) throw new Error("Erreur lors de la création de la tier list");
@@ -101,7 +175,7 @@ export default function TierListHomePage() {
                 required
                 maxLength={60}
                 className="mt-1"
-                placeholder={type === "game" ? "Ex: Mes RPG préférés" : "Ex: Les meilleures sagas"}
+                placeholder={type === "games" ? "Ex: Mes RPG préférés" : "Ex: Les meilleures sagas"}
               />
             </div>
             <div>

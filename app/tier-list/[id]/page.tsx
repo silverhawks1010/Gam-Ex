@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import type { GameSummary } from "@/types/game";
+import type { GameSummary as IGDBGameSummary, IGDBImage } from "@/types/game";
 import Image from "next/image";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/molecules/Navbar";
@@ -18,14 +18,17 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { useParams } from "next/navigation";
 
-type FranchiseSummary = { id: number; name: string; cover: string | null };
+type GameSummary = {
+  id: number;
+  name: string;
+  cover: string | undefined;
+};
 
-function normalizeIGDBUrl(url?: string) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  if (url.startsWith("//")) return "https:" + url;
-  return url;
-}
+type FranchiseSummary = {
+  id: number;
+  name: string;
+  cover: string | undefined;
+};
 
 type TierListColumn = {
   id: string;
@@ -40,19 +43,8 @@ type TierListItem = {
   position: number;
   game_id?: number;
   franchise_id?: number;
-  game?: {
-    id: number;
-    name: string;
-    cover?: {
-      id: number;
-      url: string;
-    };
-  };
-  franchise?: {
-    id: number;
-    name: string;
-    cover: string | null;
-  };
+  cover?: string;
+  name?: string;
 };
 
 type TierRow = {
@@ -85,9 +77,9 @@ function GameCard({ game, onRemove, dragProps, isDragging }: { game: GameSummary
         <TooltipTrigger asChild>
           <div className="w-20 bg-muted rounded overflow-visible flex flex-col items-center cursor-pointer">
             <div className="w-full flex items-center justify-center" style={{height: 96}}>
-              {game.cover && game.cover.url ? (
+              {game.cover ? (
                 <Image 
-                  src={normalizeIGDBUrl(game.cover.url.replace("t_thumb", "t_cover_big"))}
+                  src={game.cover}
                   alt={game.name} 
                   width={80} 
                   height={96} 
@@ -201,6 +193,29 @@ function DroppableContainer({ id, children, className = "", ref }: { id: string;
   );
 }
 
+function normalizeIGDBUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  return url;
+}
+
+function convertIGDBImageToUrl(cover: IGDBImage | { id: number; url: string } | undefined): string | undefined {
+  if (!cover) return undefined;
+  if ('url' in cover) {
+    return cover.url.replace("t_thumb", "t_cover_big");
+  }
+  return undefined;
+}
+
+function convertIGDBGameToGameSummary(game: IGDBGameSummary): GameSummary {
+  return {
+    id: game.id,
+    name: game.name,
+    cover: convertIGDBImageToUrl(game.cover)
+  };
+}
+
 export default function TierListPage() {
   console.log('Component rendering');
 
@@ -231,6 +246,7 @@ export default function TierListPage() {
   const [tierListName, setTierListName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [shouldSave, setShouldSave] = useState(false);
   const [tierListType, setTierListType] = useState<'games' | 'franchises'>('games');
   const { toast } = useToast();
 
@@ -293,36 +309,63 @@ export default function TierListPage() {
 
       if (tierList.type === 'games') {
         // Organiser les jeux par colonne
-        const rowsData = columns.map((col) => ({
-          label: col.label,
-          color: col.color,
+        const rowsData = columns.map(column => ({
+          label: column.label,
+          color: column.color,
           games: items
-            .filter((item) => item.column_id === col.id)
-            .sort((a, b) => a.position - b.position)
-            .map((item) => ({
+            .filter(item => item.column_id === column.id && item.game_id)
+            .map(item => ({
               id: item.game_id!,
-              name: item.game?.name || 'Jeu inconnu',
-              cover: item.game?.cover
+              name: item.name || '',
+              cover: item.cover ? { id: 0, url: normalizeIGDBUrl(item.cover), image_id: '', height: 0, width: 0 } as IGDBImage : undefined
             }))
         }));
         console.log('Setting games rows:', rowsData);
         setRows(rowsData);
+
+        // Mettre à jour la galerie avec les jeux sans colonne
+        const gallery = items
+          .filter(item => !item.column_id && item.game_id)
+          .map(item => ({
+            id: item.game_id!,
+            name: item.name || '',
+            cover: item.cover ? { id: 0, url: normalizeIGDBUrl(item.cover), image_id: '', height: 0, width: 0 } as IGDBImage : undefined
+          }));
+        setGalleryGames(gallery);
       } else {
         // Organiser les franchises par colonne
-        const rowsData = columns.map((col) => ({
-          label: col.label,
-          color: col.color,
-          games: items
-            .filter((item) => item.column_id === col.id)
-            .sort((a, b) => a.position - b.position)
-            .map((item) => ({
-              id: item.franchise_id!,
-              name: item.franchise?.name || 'Franchise inconnue',
-              cover: item.franchise?.cover || null
-            }))
+        const franchisesByColumn = items.reduce((acc: { [key: string]: FranchiseSummary[] }, item: TierListItem) => {
+          if (!acc[item.column_id]) {
+            acc[item.column_id] = [];
+          }
+          if (item.franchise_id && item.name && item.cover) {
+            acc[item.column_id].push({
+              id: item.franchise_id,
+              name: item.name,
+              cover: item.cover
+            });
+          }
+          return acc;
+        }, {});
+
+        // Créer les rangées avec les franchises
+        const rowsData: FranchiseTierRow[] = columns.map(column => ({
+          label: column.label,
+          color: column.color,
+          games: franchisesByColumn[column.id] || []
         }));
-        console.log('Setting franchise rows:', rowsData);
         setFranchiseRows(rowsData);
+
+        // Filtrer les franchises déjà classées de la galerie
+        const classifiedFranchiseIds = new Set(items.map(item => item.franchise_id).filter(Boolean));
+        const gallery: FranchiseSummary[] = items
+          .filter(item => !item.column_id && item.franchise_id && !classifiedFranchiseIds.has(item.franchise_id))
+          .map(item => ({
+            id: item.franchise_id!,
+            name: item.name!,
+            cover: item.cover
+          }));
+        setGalleryGames(gallery);
       }
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -370,23 +413,189 @@ export default function TierListPage() {
     }
   }, [tierListType]);
 
-  // Edition rang
-  const handleEdit = (idx: number, label: string, color: string) => {
-    setRows(rows => rows.map((row, i) => i === idx ? { ...row, label, color } : row));
-    setEditingIndex(null);
+  // Fonction de sauvegarde automatique
+  const autoSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      if (tierListType === 'games') {
+        // 1. Mettre à jour la tier list
+        await fetch(`/api/tierlists/${tierListId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: tierListName, is_public: isPublic }),
+        });
+
+        // 2. Récupérer les colonnes existantes
+        const columnsRes = await fetch(`/api/tierlists/${tierListId}/columns`);
+        const existingColumns = await columnsRes.json();
+
+        // 3. Mettre à jour les colonnes existantes
+        const columnPromises = rows.map((row, idx) => {
+          const existingColumn = existingColumns[idx];
+          if (existingColumn) {
+            return fetch(`/api/tierlists/${tierListId}/columns/${existingColumn.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ label: row.label, color: row.color, position: idx }),
+            });
+          } else {
+            return fetch(`/api/tierlists/${tierListId}/columns`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ label: row.label, color: row.color, position: idx }),
+            });
+          }
+        });
+        const columnResponses = await Promise.all(columnPromises);
+        const columnData = await Promise.all(columnResponses.map(r => r.json()));
+
+        // 4. Supprimer les colonnes en trop
+        if (existingColumns.length > rows.length) {
+          const deletePromises = existingColumns
+            .slice(rows.length)
+            .map((col: any) => fetch(`/api/tierlists/${tierListId}/columns/${col.id}`, { method: 'DELETE' }));
+          await Promise.all(deletePromises);
+        }
+
+        // 5. Mettre à jour les items
+        const itemPromises = rows.flatMap((row, rowIdx) =>
+          row.games.map((game, gameIdx) =>
+            fetch(`/api/tierlists/${tierListId}/items`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                column_id: columnData[rowIdx].id,
+                item_id: game.id,
+                game_id: game.id,
+                name: game.name,
+                cover: game.cover,
+                position: gameIdx,
+              }),
+            })
+          )
+        );
+        await Promise.all(itemPromises);
+      } else {
+        // Même logique pour les franchises
+        await fetch(`/api/tierlists/${tierListId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: tierListName, is_public: isPublic }),
+        });
+
+        // Récupérer les colonnes existantes
+        const columnsRes = await fetch(`/api/tierlists/${tierListId}/columns`);
+        const existingColumns = await columnsRes.json();
+
+        // Mettre à jour les colonnes existantes
+        const columnPromises = franchiseRows.map((row, idx) => {
+          const existingColumn = existingColumns[idx];
+          if (existingColumn) {
+            return fetch(`/api/tierlists/${tierListId}/columns/${existingColumn.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ label: row.label, color: row.color, position: idx }),
+            });
+          } else {
+            return fetch(`/api/tierlists/${tierListId}/columns`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ label: row.label, color: row.color, position: idx }),
+            });
+          }
+        });
+        const columnResponses = await Promise.all(columnPromises);
+        const columnData = await Promise.all(columnResponses.map(r => r.json()));
+
+        // Supprimer les colonnes en trop
+        if (existingColumns.length > franchiseRows.length) {
+          const deletePromises = existingColumns
+            .slice(franchiseRows.length)
+            .map((col: any) => fetch(`/api/tierlists/${tierListId}/columns/${col.id}`, { method: 'DELETE' }));
+          await Promise.all(deletePromises);
+        }
+
+        // Mettre à jour les items
+        const itemPromises = franchiseRows.flatMap((row, rowIdx) =>
+          row.games.map((franchise, franchiseIdx) =>
+            fetch(`/api/tierlists/${tierListId}/items`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                column_id: columnData[rowIdx].id,
+                item_id: franchise.id,
+                franchise_id: franchise.id,
+                name: franchise.name,
+                cover: franchise.cover,
+                position: franchiseIdx,
+              }),
+            })
+          )
+        );
+        await Promise.all(itemPromises);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde automatique:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Erreur lors de la sauvegarde automatique',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  // Effet pour la sauvegarde automatique
+  useEffect(() => {
+    if (shouldSave && !isSaving) {
+      autoSave();
+      setShouldSave(false);
+    }
+  }, [shouldSave, rows, franchiseRows]);
+
+  // Modification de handleEdit pour déclencher la sauvegarde
+  const handleEdit = (idx: number, label: string, color: string) => {
+    if (tierListType === 'games') {
+      setRows(rows => rows.map((row, i) => i === idx ? { ...row, label, color } : row));
+    } else {
+      setFranchiseRows(rows => rows.map((row, i) => i === idx ? { ...row, label, color } : row));
+    }
+    setEditingIndex(null);
+    setShouldSave(true);
+  };
+
   // Suppression rang
   const handleDeleteRow = (idx: number) => {
-    if (rows.length <= 1) return;
-    setGalleryGames(galleryGames => [...galleryGames, ...rows[idx].games]);
-    setRows(rows => rows.filter((_, i) => i !== idx));
+    if (tierListType === 'games') {
+      if (rows.length <= 1) return;
+      // Déplacer les jeux vers la galerie
+      const gamesToMove = rows[idx].games;
+      setGalleryGames(prev => [...prev, ...gamesToMove]);
+      // Supprimer la rangée
+      setRows(prev => prev.filter((_, i) => i !== idx));
+    } else {
+      if (franchiseRows.length <= 1) return;
+      // Déplacer les franchises vers la galerie
+      const franchisesToMove = franchiseRows[idx].games;
+      setFranchises(prev => [...prev, ...franchisesToMove]);
+      // Supprimer la rangée
+      setFranchiseRows(prev => prev.filter((_, i) => i !== idx));
+    }
+    setShouldSave(true);
   };
   // Ajout rang
   const handleAddRow = () => {
     if (!newRowLabel.trim()) return;
-    setRows([...rows, { label: newRowLabel, color: newRowColor, games: [] }]);
+    if (tierListType === 'games') {
+      setRows([...rows, { label: newRowLabel, color: newRowColor, games: [] }]);
+    } else {
+      setFranchiseRows([...franchiseRows, { label: newRowLabel, color: newRowColor, games: [] }]);
+    }
     setNewRowLabel("");
     setNewRowColor("bg-gray-300");
+    setShouldSave(true);
   };
 
   // Drag & drop
@@ -430,6 +639,7 @@ export default function TierListPage() {
     if (!over) {
       setActiveGame(null);
       setActiveFranchise(null);
+      setShouldSave(true);
       return;
     }
 
@@ -580,6 +790,7 @@ export default function TierListPage() {
 
     setActiveGame(null);
     setActiveFranchise(null);
+    setShouldSave(true);
   };
 
   // Autocomplete handler
@@ -607,14 +818,28 @@ export default function TierListPage() {
   };
 
   const handleSelectGame = async (game: { id: number; name: string }) => {
-    try {
-      const res = await fetch(`/api/games/search?q=${encodeURIComponent(game.name)}`);
-      const data: { id: number; name: string }[] = await res.json();
-      const found = data.find((g) => g.id === game.id);
-      if (found && !galleryGames.some(g => g.id === found.id)) {
-        setGalleryGames(galleryGames => [...galleryGames, { id: found.id, name: found.name, cover: undefined }]);
-      }
-    } catch {}
+    // Vérifier si le jeu est déjà dans une colonne ou la galerie
+    const isGameInColumns = rows.some(row => 
+      row.games.some(g => g.id === game.id)
+    );
+    const isGameInGallery = galleryGames.some(g => g.id === game.id);
+
+    if (isGameInColumns || isGameInGallery) {
+      toast({
+        title: "Jeu déjà ajouté",
+        description: "Ce jeu est déjà présent dans la tier list.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Continuer avec l'ajout du jeu si pas déjà présent
+    const newGame: GameSummary = {
+      id: game.id,
+      name: game.name,
+      cover: undefined
+    };
+    setGalleryGames(prev => [...prev, newGame]);
     setAutocompleteInput("");
     setAutocompleteResults([]);
     setShowAutocomplete(false);
@@ -647,6 +872,7 @@ export default function TierListPage() {
     ));
     const game = rows[rowIdx].games.find(g => g.id === gameId);
     if (game) setGalleryGames(g => [...g, game]);
+    setShouldSave(true);
   };
 
   // Suppression d'un jeu de la galerie
@@ -699,6 +925,8 @@ export default function TierListPage() {
               column_id: columnData[rowIdx].id,
               item_id: game.id,
               game_id: game.id,
+              name: game.name,
+              cover: game.cover,
               position: gameIdx,
             }),
           })
@@ -750,6 +978,8 @@ export default function TierListPage() {
               column_id: columnData[rowIdx].id,
               item_id: franchise.id,
               franchise_id: franchise.id,
+              name: franchise.name,
+              cover: franchise.cover,
               position: franchiseIdx,
             }),
           })
@@ -765,6 +995,32 @@ export default function TierListPage() {
       setIsSaving(false);
     }
   }
+
+  // Modification des boutons de déplacement des lignes
+  const handleMoveRow = (idx: number, direction: 'up' | 'down') => {
+    if (tierListType === 'games') {
+      setRows(rows => {
+        const newRows = [...rows];
+        if (direction === 'up' && idx > 0) {
+          [newRows[idx-1], newRows[idx]] = [newRows[idx], newRows[idx-1]];
+        } else if (direction === 'down' && idx < rows.length-1) {
+          [newRows[idx+1], newRows[idx]] = [newRows[idx], newRows[idx+1]];
+        }
+        return newRows;
+      });
+    } else {
+      setFranchiseRows(rows => {
+        const newRows = [...rows];
+        if (direction === 'up' && idx > 0) {
+          [newRows[idx-1], newRows[idx]] = [newRows[idx], newRows[idx-1]];
+        } else if (direction === 'down' && idx < rows.length-1) {
+          [newRows[idx+1], newRows[idx]] = [newRows[idx], newRows[idx+1]];
+        }
+        return newRows;
+      });
+    }
+    setShouldSave(true);
+  };
 
   // Si le composant n'est pas monté ou est en cours de chargement, afficher un état de chargement
   if (!isMounted || isLoading) {
@@ -841,14 +1097,138 @@ export default function TierListPage() {
                   <SelectValue placeholder="Couleur" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bg-yellow-400">Jaune</SelectItem>
-                  <SelectItem value="bg-green-400">Vert</SelectItem>
-                  <SelectItem value="bg-blue-400">Bleu</SelectItem>
-                  <SelectItem value="bg-purple-400">Violet</SelectItem>
-                  <SelectItem value="bg-red-400">Rouge</SelectItem>
-                  <SelectItem value="bg-gray-300">Gris</SelectItem>
-                  <SelectItem value="bg-pink-400">Rose</SelectItem>
-                  <SelectItem value="bg-orange-400">Orange</SelectItem>
+                  <SelectItem value="bg-yellow-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                      <span>Jaune</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-green-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-green-400"></div>
+                      <span>Vert</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-blue-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-blue-400"></div>
+                      <span>Bleu</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-purple-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-purple-400"></div>
+                      <span>Violet</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-red-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-red-400"></div>
+                      <span>Rouge</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-gray-300">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                      <span>Gris</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-pink-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-pink-400"></div>
+                      <span>Rose</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-orange-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-orange-400"></div>
+                      <span>Orange</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-teal-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-teal-400"></div>
+                      <span>Turquoise</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-indigo-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-indigo-400"></div>
+                      <span>Indigo</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-cyan-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-cyan-400"></div>
+                      <span>Cyan</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-emerald-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-emerald-400"></div>
+                      <span>Émeraude</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-lime-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-lime-400"></div>
+                      <span>Citron</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-amber-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-amber-400"></div>
+                      <span>Ambre</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-sky-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-sky-400"></div>
+                      <span>Ciel</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-violet-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-violet-400"></div>
+                      <span>Violet clair</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-fuchsia-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-fuchsia-400"></div>
+                      <span>Fuchsia</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-rose-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-rose-400"></div>
+                      <span>Rose vif</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-slate-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-slate-400"></div>
+                      <span>Ardoise</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-zinc-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-zinc-400"></div>
+                      <span>Zinc</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-stone-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-stone-400"></div>
+                      <span>Pierre</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-neutral-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-neutral-400"></div>
+                      <span>Neutre</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="default" className="rounded-lg shadow-sm" onClick={handleAddRow}>+ Ajouter</Button>
@@ -932,8 +1312,17 @@ export default function TierListPage() {
                   </div>
                   <div className="flex flex-col gap-1 ml-2 items-end justify-center pr-2">
                     <div className="flex gap-1 mb-1">
-                      <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => idx > 0 && setRows(rows => { const newRows = [...rows]; [newRows[idx-1], newRows[idx]] = [newRows[idx], newRows[idx-1]]; return newRows; })} disabled={idx === 0} aria-label="Monter">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-full hover:bg-accent" 
+                        onClick={() => handleMoveRow(idx, 'up')} 
+                        disabled={idx === 0} 
+                        aria-label="Monter"
+                      >
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M12 5v14M5 12l7-7 7 7"/>
+                        </svg>
                       </Button>
                       <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => setEditingIndex(idx)}>
                           <span className="sr-only">Éditer</span>
@@ -947,14 +1336,138 @@ export default function TierListPage() {
                             <SelectValue placeholder="Couleur" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="bg-yellow-400">Jaune</SelectItem>
-                            <SelectItem value="bg-green-400">Vert</SelectItem>
-                            <SelectItem value="bg-blue-400">Bleu</SelectItem>
-                            <SelectItem value="bg-purple-400">Violet</SelectItem>
-                            <SelectItem value="bg-red-400">Rouge</SelectItem>
-                            <SelectItem value="bg-gray-300">Gris</SelectItem>
-                            <SelectItem value="bg-pink-400">Rose</SelectItem>
-                            <SelectItem value="bg-orange-400">Orange</SelectItem>
+                            <SelectItem value="bg-yellow-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                                <span>Jaune</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-green-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-green-400"></div>
+                                <span>Vert</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-blue-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-blue-400"></div>
+                                <span>Bleu</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-purple-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-purple-400"></div>
+                                <span>Violet</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-red-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-red-400"></div>
+                                <span>Rouge</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-gray-300">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                                <span>Gris</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-pink-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-pink-400"></div>
+                                <span>Rose</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-orange-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-orange-400"></div>
+                                <span>Orange</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-teal-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-teal-400"></div>
+                                <span>Turquoise</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-indigo-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-indigo-400"></div>
+                                <span>Indigo</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-cyan-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-cyan-400"></div>
+                                <span>Cyan</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-emerald-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-emerald-400"></div>
+                                <span>Émeraude</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-lime-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-lime-400"></div>
+                                <span>Citron</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-amber-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-amber-400"></div>
+                                <span>Ambre</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-sky-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-sky-400"></div>
+                                <span>Ciel</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-violet-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-violet-400"></div>
+                                <span>Violet clair</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-fuchsia-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-fuchsia-400"></div>
+                                <span>Fuchsia</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-rose-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-rose-400"></div>
+                                <span>Rose vif</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-slate-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-slate-400"></div>
+                                <span>Ardoise</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-zinc-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-zinc-400"></div>
+                                <span>Zinc</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-stone-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-stone-400"></div>
+                                <span>Pierre</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-neutral-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-neutral-400"></div>
+                                <span>Neutre</span>
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <div className="flex gap-1">
@@ -968,8 +1481,17 @@ export default function TierListPage() {
                       </>
                     ) : (
                       <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => idx < rows.length-1 && setRows(rows => { const newRows = [...rows]; [newRows[idx+1], newRows[idx]] = [newRows[idx], newRows[idx+1]]; return newRows; })} disabled={idx === rows.length-1} aria-label="Descendre">
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7 7 7-7"/></svg>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-full hover:bg-accent" 
+                      onClick={() => handleMoveRow(idx, 'down')} 
+                      disabled={idx === (tierListType === 'games' ? rows.length-1 : franchiseRows.length-1)} 
+                      aria-label="Descendre"
+                    >
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M12 19V5M5 12l7 7 7-7"/>
+                      </svg>
                     </Button>
                       <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => handleDeleteRow(idx)}>
                         <span className="sr-only">Supprimer</span>
@@ -1091,14 +1613,138 @@ export default function TierListPage() {
                   <SelectValue placeholder="Couleur" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bg-yellow-400">Jaune</SelectItem>
-                  <SelectItem value="bg-green-400">Vert</SelectItem>
-                  <SelectItem value="bg-blue-400">Bleu</SelectItem>
-                  <SelectItem value="bg-purple-400">Violet</SelectItem>
-                  <SelectItem value="bg-red-400">Rouge</SelectItem>
-                  <SelectItem value="bg-gray-300">Gris</SelectItem>
-                  <SelectItem value="bg-pink-400">Rose</SelectItem>
-                  <SelectItem value="bg-orange-400">Orange</SelectItem>
+                  <SelectItem value="bg-yellow-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                      <span>Jaune</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-green-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-green-400"></div>
+                      <span>Vert</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-blue-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-blue-400"></div>
+                      <span>Bleu</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-purple-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-purple-400"></div>
+                      <span>Violet</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-red-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-red-400"></div>
+                      <span>Rouge</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-gray-300">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                      <span>Gris</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-pink-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-pink-400"></div>
+                      <span>Rose</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-orange-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-orange-400"></div>
+                      <span>Orange</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-teal-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-teal-400"></div>
+                      <span>Turquoise</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-indigo-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-indigo-400"></div>
+                      <span>Indigo</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-cyan-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-cyan-400"></div>
+                      <span>Cyan</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-emerald-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-emerald-400"></div>
+                      <span>Émeraude</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-lime-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-lime-400"></div>
+                      <span>Citron</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-amber-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-amber-400"></div>
+                      <span>Ambre</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-sky-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-sky-400"></div>
+                      <span>Ciel</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-violet-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-violet-400"></div>
+                      <span>Violet clair</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-fuchsia-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-fuchsia-400"></div>
+                      <span>Fuchsia</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-rose-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-rose-400"></div>
+                      <span>Rose vif</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-slate-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-slate-400"></div>
+                      <span>Ardoise</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-zinc-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-zinc-400"></div>
+                      <span>Zinc</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-stone-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-stone-400"></div>
+                      <span>Pierre</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bg-neutral-400">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-neutral-400"></div>
+                      <span>Neutre</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="default" className="rounded-lg shadow-sm" onClick={handleAddRow}>+ Ajouter</Button>
@@ -1143,8 +1789,17 @@ export default function TierListPage() {
                   </div>
                   <div className="flex flex-col gap-1 ml-2 items-end justify-center pr-2">
                     <div className="flex gap-1 mb-1">
-                      <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => idx > 0 && setFranchiseRows(rows => { const newRows = [...rows]; [newRows[idx-1], newRows[idx]] = [newRows[idx], newRows[idx-1]]; return newRows; })} disabled={idx === 0} aria-label="Monter">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-full hover:bg-accent" 
+                        onClick={() => handleMoveRow(idx, 'up')} 
+                        disabled={idx === 0} 
+                        aria-label="Monter"
+                      >
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M12 5v14M5 12l7-7 7 7"/>
+                        </svg>
                       </Button>
                       <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => setEditingIndex(idx)}>
                           <span className="sr-only">Éditer</span>
@@ -1158,14 +1813,138 @@ export default function TierListPage() {
                             <SelectValue placeholder="Couleur" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="bg-yellow-400">Jaune</SelectItem>
-                            <SelectItem value="bg-green-400">Vert</SelectItem>
-                            <SelectItem value="bg-blue-400">Bleu</SelectItem>
-                            <SelectItem value="bg-purple-400">Violet</SelectItem>
-                            <SelectItem value="bg-red-400">Rouge</SelectItem>
-                            <SelectItem value="bg-gray-300">Gris</SelectItem>
-                            <SelectItem value="bg-pink-400">Rose</SelectItem>
-                            <SelectItem value="bg-orange-400">Orange</SelectItem>
+                            <SelectItem value="bg-yellow-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+                                <span>Jaune</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-green-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-green-400"></div>
+                                <span>Vert</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-blue-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-blue-400"></div>
+                                <span>Bleu</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-purple-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-purple-400"></div>
+                                <span>Violet</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-red-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-red-400"></div>
+                                <span>Rouge</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-gray-300">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-gray-300"></div>
+                                <span>Gris</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-pink-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-pink-400"></div>
+                                <span>Rose</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-orange-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-orange-400"></div>
+                                <span>Orange</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-teal-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-teal-400"></div>
+                                <span>Turquoise</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-indigo-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-indigo-400"></div>
+                                <span>Indigo</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-cyan-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-cyan-400"></div>
+                                <span>Cyan</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-emerald-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-emerald-400"></div>
+                                <span>Émeraude</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-lime-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-lime-400"></div>
+                                <span>Citron</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-amber-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-amber-400"></div>
+                                <span>Ambre</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-sky-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-sky-400"></div>
+                                <span>Ciel</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-violet-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-violet-400"></div>
+                                <span>Violet clair</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-fuchsia-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-fuchsia-400"></div>
+                                <span>Fuchsia</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-rose-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-rose-400"></div>
+                                <span>Rose vif</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-slate-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-slate-400"></div>
+                                <span>Ardoise</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-zinc-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-zinc-400"></div>
+                                <span>Zinc</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-stone-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-stone-400"></div>
+                                <span>Pierre</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bg-neutral-400">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-neutral-400"></div>
+                                <span>Neutre</span>
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <div className="flex gap-1">
@@ -1179,10 +1958,19 @@ export default function TierListPage() {
                       </>
                     ) : (
                       <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => idx < franchiseRows.length-1 && setFranchiseRows(rows => { const newRows = [...rows]; [newRows[idx+1], newRows[idx]] = [newRows[idx], newRows[idx+1]]; return newRows; })} disabled={idx === franchiseRows.length-1} aria-label="Descendre">
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7 7 7-7"/></svg>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-full hover:bg-accent" 
+                      onClick={() => handleMoveRow(idx, 'down')} 
+                      disabled={idx === (tierListType === 'games' ? rows.length-1 : franchiseRows.length-1)} 
+                      aria-label="Descendre"
+                    >
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M12 19V5M5 12l7 7 7-7"/>
+                      </svg>
                     </Button>
-                      <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => setFranchiseRows(rows => rows.filter((_, i) => i !== idx))}>
+                      <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => handleDeleteRow(idx)}>
                         <span className="sr-only">Supprimer</span>
                         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
                       </Button>
