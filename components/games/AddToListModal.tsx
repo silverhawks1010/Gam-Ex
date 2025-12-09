@@ -24,12 +24,6 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && user) {
-      loadLists();
-    }
-  }, [isOpen, user]);
-
   const loadLists = async () => {
     try {
       const userLists = await listService.getUserLists();
@@ -44,6 +38,12 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
       });
     }
   };
+
+  useEffect(() => {
+    if (isOpen && user) {
+      loadLists();
+    }
+  }, [isOpen, user, loadLists]);
 
   const handleAddToList = async () => {
     if (selectedLists.length === 0) {
@@ -60,12 +60,12 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
       await Promise.all(
         selectedLists.map(listId => listService.addGameToList(listId, gameId))
       );
-      
+
       toast({
         title: "Succès",
         description: "Jeu ajouté aux listes sélectionnées"
       });
-      
+
       setIsOpen(false);
       setSelectedLists([]);
     } catch (e) {

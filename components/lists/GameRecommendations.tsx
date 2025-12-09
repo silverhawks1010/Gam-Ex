@@ -53,7 +53,7 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
     setAddingGameId(game.id);
     try {
       await listService.addGameToList(listId, game.id.toString());
-      
+
       toast({
         title: "Succès",
         description: `${game.name} ajouté à la liste`
@@ -131,9 +131,9 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
               <p>• Les recommandations sont basées sur les jeux similaires dans la base IGDB</p>
               <p>• Certains jeux peuvent ne pas avoir de jeux similaires référencés</p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={loadRecommendations}
               className="mt-4"
             >
@@ -161,7 +161,7 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
           {recommendations.map((game) => {
             const coverUrl = getCoverUrl(game);
             const releaseYear = getReleaseYear(game);
-            
+
             return (
               <div key={game.id} className="group relative">
                 <div className="aspect-[3/4] relative overflow-hidden rounded-lg border bg-muted">
@@ -179,12 +179,12 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
                       </span>
                     </div>
                   )}
-                  
+
                   {/* Score de recommandation */}
                   <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
                     {game.recommendationScore} similaire{game.recommendationScore > 1 ? 's' : ''}
                   </div>
-                  
+
                   {/* Bouton d'ajout */}
                   {canEdit && (
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -206,7 +206,7 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
                     </div>
                   )}
                 </div>
-                
+
                 <div className="mt-2 space-y-1">
                   <h4 className="font-medium text-sm truncate" title={game.name}>
                     {game.name}

@@ -6,28 +6,24 @@ import { CSS } from "@dnd-kit/utilities";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import type { GameSummary as IGDBGameSummary, IGDBImage } from "@/types/game";
+import type { IGDBImage } from "@/types/game";
 import Image from "next/image";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/molecules/Navbar";
 import { Footer } from "@/components/molecules/Footer";
-import type { Game } from '@/types/game';
+import type { Game, GameSummary } from '@/types/game';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { useParams } from "next/navigation";
 
-type GameSummary = {
-  id: number;
-  name: string;
-  cover: string | undefined;
-};
+
 
 type FranchiseSummary = {
   id: number;
   name: string;
-  cover: string | undefined;
+  cover: IGDBImage | { id: number; url: string } | undefined;
 };
 
 type TierListColumn = {
@@ -76,14 +72,14 @@ function GameCard({ game, onRemove, dragProps, isDragging }: { game: GameSummary
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="w-20 bg-muted rounded overflow-visible flex flex-col items-center cursor-pointer">
-            <div className="w-full flex items-center justify-center" style={{height: 96}}>
+            <div className="w-full flex items-center justify-center" style={{ height: 96 }}>
               {game.cover ? (
-                <Image 
-                  src={game.cover}
-                  alt={game.name} 
-                  width={80} 
-                  height={96} 
-                  className="object-cover w-full h-full" 
+                <Image
+                  src={typeof game.cover === 'string' ? game.cover : game.cover.url}
+                  alt={game.name}
+                  width={80}
+                  height={96}
+                  className="object-cover w-full h-full"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -140,7 +136,7 @@ function SortableFranchiseCard({ franchise, id, showName, onRemove }: { franchis
           <div className="relative flex flex-col items-center cursor-pointer">
             {franchise.cover ? (
               <Image
-                src={franchise.cover}
+                src={typeof franchise.cover === 'string' ? franchise.cover : franchise.cover?.url || ''}
                 alt={franchise.name}
                 width={80}
                 height={96}
@@ -198,22 +194,6 @@ function normalizeIGDBUrl(url?: string) {
   if (url.startsWith("http")) return url;
   if (url.startsWith("//")) return "https:" + url;
   return url;
-}
-
-function convertIGDBImageToUrl(cover: IGDBImage | { id: number; url: string } | undefined): string | undefined {
-  if (!cover) return undefined;
-  if ('url' in cover) {
-    return cover.url.replace("t_thumb", "t_cover_big");
-  }
-  return undefined;
-}
-
-function convertIGDBGameToGameSummary(game: IGDBGameSummary): GameSummary {
-  return {
-    id: game.id,
-    name: game.name,
-    cover: convertIGDBImageToUrl(game.cover)
-  };
 }
 
 export default function TierListPage() {
@@ -342,7 +322,7 @@ export default function TierListPage() {
             acc[item.column_id].push({
               id: item.franchise_id,
               name: item.name,
-              cover: item.cover
+              cover: item.cover ? { id: 0, url: normalizeIGDBUrl(item.cover) } : undefined
             });
           }
           return acc;
@@ -363,7 +343,7 @@ export default function TierListPage() {
           .map(item => ({
             id: item.franchise_id!,
             name: item.name!,
-            cover: item.cover
+            cover: item.cover ? { id: 0, url: normalizeIGDBUrl(item.cover) } : undefined
           }));
         setGalleryGames(gallery);
       }
@@ -409,7 +389,13 @@ export default function TierListPage() {
     if (tierListType === 'franchises') {
       fetch('/api/franchises/random-many?count=500')
         .then(res => res.json())
-        .then(data => setFranchises(data.franchises || []));
+        .then((data) => {
+          const mappedFranchises = (data.franchises || []).map((f: FranchiseSummary) => ({
+            ...f,
+            cover: f.cover ? (typeof f.cover === 'string' ? { id: 0, url: f.cover } : f.cover) : undefined
+          }));
+          setFranchises(mappedFranchises);
+        });
     }
   }, [tierListType]);
 
@@ -454,7 +440,7 @@ export default function TierListPage() {
         if (existingColumns.length > rows.length) {
           const deletePromises = existingColumns
             .slice(rows.length)
-            .map((col: any) => fetch(`/api/tierlists/${tierListId}/columns/${col.id}`, { method: 'DELETE' }));
+            .map((col: TierListColumn) => fetch(`/api/tierlists/${tierListId}/columns/${col.id}`, { method: 'DELETE' }));
           await Promise.all(deletePromises);
         }
 
@@ -512,7 +498,7 @@ export default function TierListPage() {
         if (existingColumns.length > franchiseRows.length) {
           const deletePromises = existingColumns
             .slice(franchiseRows.length)
-            .map((col: any) => fetch(`/api/tierlists/${tierListId}/columns/${col.id}`, { method: 'DELETE' }));
+            .map((col: TierListColumn) => fetch(`/api/tierlists/${tierListId}/columns/${col.id}`, { method: 'DELETE' }));
           await Promise.all(deletePromises);
         }
 
@@ -819,7 +805,7 @@ export default function TierListPage() {
 
   const handleSelectGame = async (game: { id: number; name: string }) => {
     // Vérifier si le jeu est déjà dans une colonne ou la galerie
-    const isGameInColumns = rows.some(row => 
+    const isGameInColumns = rows.some(row =>
       row.games.some(g => g.id === game.id)
     );
     const isGameInGallery = galleryGames.some(g => g.id === game.id);
@@ -862,7 +848,7 @@ export default function TierListPage() {
         }))
       );
       setGalleryPage(1);
-    } catch {}
+    } catch { }
   };
 
   // Suppression d'un jeu d'un rang
@@ -1002,9 +988,9 @@ export default function TierListPage() {
       setRows(rows => {
         const newRows = [...rows];
         if (direction === 'up' && idx > 0) {
-          [newRows[idx-1], newRows[idx]] = [newRows[idx], newRows[idx-1]];
-        } else if (direction === 'down' && idx < rows.length-1) {
-          [newRows[idx+1], newRows[idx]] = [newRows[idx], newRows[idx+1]];
+          [newRows[idx - 1], newRows[idx]] = [newRows[idx], newRows[idx - 1]];
+        } else if (direction === 'down' && idx < rows.length - 1) {
+          [newRows[idx + 1], newRows[idx]] = [newRows[idx], newRows[idx + 1]];
         }
         return newRows;
       });
@@ -1012,9 +998,9 @@ export default function TierListPage() {
       setFranchiseRows(rows => {
         const newRows = [...rows];
         if (direction === 'up' && idx > 0) {
-          [newRows[idx-1], newRows[idx]] = [newRows[idx], newRows[idx-1]];
-        } else if (direction === 'down' && idx < rows.length-1) {
-          [newRows[idx+1], newRows[idx]] = [newRows[idx], newRows[idx+1]];
+          [newRows[idx - 1], newRows[idx]] = [newRows[idx], newRows[idx - 1]];
+        } else if (direction === 'down' && idx < rows.length - 1) {
+          [newRows[idx + 1], newRows[idx]] = [newRows[idx], newRows[idx + 1]];
         }
         return newRows;
       });
@@ -1038,7 +1024,7 @@ export default function TierListPage() {
       </div>
     );
   }
-  
+
   if (tierListType === 'games') {
     return (
       <div>
@@ -1312,22 +1298,22 @@ export default function TierListPage() {
                   </div>
                   <div className="flex flex-col gap-1 ml-2 items-end justify-center pr-2">
                     <div className="flex gap-1 mb-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="rounded-full hover:bg-accent" 
-                        onClick={() => handleMoveRow(idx, 'up')} 
-                        disabled={idx === 0} 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full hover:bg-accent"
+                        onClick={() => handleMoveRow(idx, 'up')}
+                        disabled={idx === 0}
                         aria-label="Monter"
                       >
                         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path d="M12 5v14M5 12l7-7 7 7"/>
+                          <path d="M12 5v14M5 12l7-7 7 7" />
                         </svg>
                       </Button>
                       <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => setEditingIndex(idx)}>
-                          <span className="sr-only">Éditer</span>
-                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536M9 13l6.071-6.071a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm0 0v3.586a1 1 0 001 1h3.586"></path></svg>
-                        </Button>
+                        <span className="sr-only">Éditer</span>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536M9 13l6.071-6.071a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm0 0v3.586a1 1 0 001 1h3.586"></path></svg>
+                      </Button>
                     </div>
                     {editingIndex === idx ? (
                       <>
@@ -1481,23 +1467,23 @@ export default function TierListPage() {
                       </>
                     ) : (
                       <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="rounded-full hover:bg-accent" 
-                      onClick={() => handleMoveRow(idx, 'down')} 
-                      disabled={idx === (tierListType === 'games' ? rows.length-1 : franchiseRows.length-1)} 
-                      aria-label="Descendre"
-                    >
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M12 19V5M5 12l7 7 7-7"/>
-                      </svg>
-                    </Button>
-                      <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => handleDeleteRow(idx)}>
-                        <span className="sr-only">Supprimer</span>
-                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
-                      </Button>
-                    </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-full hover:bg-accent"
+                          onClick={() => handleMoveRow(idx, 'down')}
+                          disabled={idx === (tierListType === 'games' ? rows.length - 1 : franchiseRows.length - 1)}
+                          aria-label="Descendre"
+                        >
+                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M12 19V5M5 12l7 7 7-7" />
+                          </svg>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => handleDeleteRow(idx)}>
+                          <span className="sr-only">Supprimer</span>
+                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1507,17 +1493,17 @@ export default function TierListPage() {
             <div className="mb-8">
               <h2 className="font-semibold mb-2">Galerie de jeux</h2>
               <SortableContext items={paginatedGalleryGames.map(g => `gallery:0:${g.id}`)} strategy={horizontalListSortingStrategy}>
-                <DroppableContainer 
-                  id="gallery:0" 
+                <DroppableContainer
+                  id="gallery:0"
                   className="bg-neutral-900/60 rounded-lg shadow-sm p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-10 gap-4"
                 >
                   {paginatedGalleryGames.map(game => (
-                    <SortableGameCard 
-                      key={game.id} 
-                      game={game} 
-                      id={`gallery:0:${game.id}`} 
-                      onRemove={() => handleRemoveGameFromGallery(game.id)} 
-                      showName={true} 
+                    <SortableGameCard
+                      key={game.id}
+                      game={game}
+                      id={`gallery:0:${game.id}`}
+                      onRemove={() => handleRemoveGameFromGallery(game.id)}
+                      showName={true}
                     />
                   ))}
                 </DroppableContainer>
@@ -1771,11 +1757,11 @@ export default function TierListPage() {
                     <SortableContext items={row.games.map(g => `row:${idx}:${g.id}`)} strategy={horizontalListSortingStrategy}>
                       <DroppableContainer id={`row:${idx}`} className="flex flex-row flex-wrap gap-2 min-h-[72px] bg-transparent rounded-r px-4 py-2 items-center">
                         {row.games.map(franchise => (
-                          <SortableFranchiseCard 
-                            key={franchise.id} 
-                            franchise={franchise} 
-                            id={`row:${idx}:${franchise.id}`} 
-                            showName={false} 
+                          <SortableFranchiseCard
+                            key={franchise.id}
+                            franchise={franchise}
+                            id={`row:${idx}:${franchise.id}`}
+                            showName={false}
                             onRemove={() => {
                               setFranchiseRows(rows => rows.map((r, i) =>
                                 i === idx ? { ...r, games: r.games.filter(g => g.id !== franchise.id) } : r
@@ -1789,22 +1775,22 @@ export default function TierListPage() {
                   </div>
                   <div className="flex flex-col gap-1 ml-2 items-end justify-center pr-2">
                     <div className="flex gap-1 mb-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="rounded-full hover:bg-accent" 
-                        onClick={() => handleMoveRow(idx, 'up')} 
-                        disabled={idx === 0} 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full hover:bg-accent"
+                        onClick={() => handleMoveRow(idx, 'up')}
+                        disabled={idx === 0}
                         aria-label="Monter"
                       >
                         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path d="M12 5v14M5 12l7-7 7 7"/>
+                          <path d="M12 5v14M5 12l7-7 7 7" />
                         </svg>
                       </Button>
                       <Button variant="ghost" size="icon" className="rounded-full hover:bg-accent" onClick={() => setEditingIndex(idx)}>
-                          <span className="sr-only">Éditer</span>
-                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536M9 13l6.071-6.071a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm0 0v3.586a1 1 0 001 1h3.586"></path></svg>
-                        </Button>
+                        <span className="sr-only">Éditer</span>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536M9 13l6.071-6.071a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-2.828 0L9 13zm0 0v3.586a1 1 0 001 1h3.586"></path></svg>
+                      </Button>
                     </div>
                     {editingIndex === idx ? (
                       <>
@@ -1958,23 +1944,23 @@ export default function TierListPage() {
                       </>
                     ) : (
                       <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="rounded-full hover:bg-accent" 
-                      onClick={() => handleMoveRow(idx, 'down')} 
-                      disabled={idx === (tierListType === 'games' ? rows.length-1 : franchiseRows.length-1)} 
-                      aria-label="Descendre"
-                    >
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M12 19V5M5 12l7 7 7-7"/>
-                      </svg>
-                    </Button>
-                      <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => handleDeleteRow(idx)}>
-                        <span className="sr-only">Supprimer</span>
-                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
-                      </Button>
-                    </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-full hover:bg-accent"
+                          onClick={() => handleMoveRow(idx, 'down')}
+                          disabled={idx === (tierListType === 'games' ? rows.length - 1 : franchiseRows.length - 1)}
+                          aria-label="Descendre"
+                        >
+                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M12 19V5M5 12l7 7 7-7" />
+                          </svg>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-red-100 text-red-600" onClick={() => handleDeleteRow(idx)}>
+                          <span className="sr-only">Supprimer</span>
+                          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1984,8 +1970,8 @@ export default function TierListPage() {
             <div className="mb-8">
               <h2 className="font-semibold mb-2">Galerie de franchises</h2>
               <SortableContext items={paginatedFranchises.map(f => `gallery:0:${f.id}`)} strategy={horizontalListSortingStrategy}>
-                <DroppableContainer 
-                  id="gallery:0" 
+                <DroppableContainer
+                  id="gallery:0"
                   className="bg-neutral-900/60 rounded-lg shadow-sm p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-10 gap-4"
                 >
                   {paginatedFranchises.map(franchise => (
@@ -2026,7 +2012,7 @@ export default function TierListPage() {
                 <div className="flex flex-col items-center cursor-pointer">
                   {activeFranchise.cover ? (
                     <Image
-                      src={activeFranchise.cover}
+                      src={typeof activeFranchise.cover === 'string' ? activeFranchise.cover : activeFranchise.cover?.url || ''}
                       alt={activeFranchise.name}
                       width={80}
                       height={96}

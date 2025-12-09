@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { listService } from '@/lib/services/listService';
@@ -46,18 +46,7 @@ export default function ListPage({ params }: ListPageProps) {
   const [members, setMembers] = useState<unknown[]>([]);
   const [showMembersModal, setShowMembersModal] = useState(false);
 
-  useEffect(() => {
-    if (loading) return;
-    
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    loadList();
-  }, [user, loading, resolvedParams.id, router]);
-
-  const loadList = async () => {
+  const loadList = useCallback(async () => {
     try {
       const lists = await listService.getUserLists();
       const currentList = lists.find(l => l.id === resolvedParams.id);
@@ -115,7 +104,18 @@ export default function ListPage({ params }: ListPageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [resolvedParams.id, router, toast]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    loadList();
+  }, [user, loading, router, loadList]);
 
   const handleUpdateList = async () => {
     if (!list) return;
@@ -402,7 +402,7 @@ export default function ListPage({ params }: ListPageProps) {
               <div className="space-y-2">
                 <h4 className="font-medium">Membres actuels</h4>
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                {(members as Array<{
+                  {(members as Array<{
                     user_id: string;
                     avatar_url: string | null;
                     username: string;
@@ -425,30 +425,30 @@ export default function ListPage({ params }: ListPageProps) {
                             {member.role === 'owner'
                               ? 'Propriétaire'
                               : member.role === 'editor'
-                              ? 'Éditeur'
-                              : 'Lecteur'}
+                                ? 'Éditeur'
+                                : 'Lecteur'}
                           </p>
                         </div>
                       </div>
                       {/* Actions (uniquement pour le propriétaire sur les non-propriétaires) */}
                       {isOwner && !member.isOwner && member.user_id !== user?.id && (
                         <div className="flex items-center gap-2">
-                          <Select 
-                            value={member.role} 
+                          <Select
+                            value={member.role}
                             onValueChange={async (value) => {
                               try {
                                 await listService.shareList(list.id, member.email, value as 'observer' | 'editor');
                                 loadList();
-                                toast({ 
-                                  title: 'Rôle mis à jour', 
-                                  description: `Rôle de ${member.username} mis à jour.` 
+                                toast({
+                                  title: 'Rôle mis à jour',
+                                  description: `Rôle de ${member.username} mis à jour.`
                                 });
                               } catch (e) {
                                 console.error("Erreur lors de la modification du rôle :", e);
-                                toast({ 
-                                  title: 'Erreur', 
-                                  description: 'Impossible de modifier le rôle', 
-                                  variant: 'destructive' 
+                                toast({
+                                  title: 'Erreur',
+                                  description: 'Impossible de modifier le rôle',
+                                  variant: 'destructive'
                                 });
                               }
                             }}
@@ -469,16 +469,16 @@ export default function ListPage({ params }: ListPageProps) {
                                 try {
                                   await listService.removeShare(list.id, member.user_id);
                                   loadList();
-                                  toast({ 
-                                    title: 'Membre retiré', 
-                                    description: `${member.username} a été retiré de la liste.` 
+                                  toast({
+                                    title: 'Membre retiré',
+                                    description: `${member.username} a été retiré de la liste.`
                                   });
                                 } catch (e) {
                                   console.error("Erreur lors de la suppression du membre :", e);
-                                  toast({ 
-                                    title: 'Erreur', 
-                                    description: 'Impossible de retirer le membre', 
-                                    variant: 'destructive' 
+                                  toast({
+                                    title: 'Erreur',
+                                    description: 'Impossible de retirer le membre',
+                                    variant: 'destructive'
                                   });
                                 }
                               }
@@ -544,14 +544,14 @@ export default function ListPage({ params }: ListPageProps) {
             <BsPeople className="w-5 h-5 text-primary" />
             <span className="font-semibold text-lg">Membres</span>
             <div className="flex -space-x-2 ml-2">
-            {(members as Array<{
-              user_id: string;
-              avatar_url: string | null;
-              username: string;
-              email: string;
-              role: string;
-              isOwner: boolean;
-            }>).slice(0, 5).map((member) => (
+              {(members as Array<{
+                user_id: string;
+                avatar_url: string | null;
+                username: string;
+                email: string;
+                role: string;
+                isOwner: boolean;
+              }>).slice(0, 5).map((member) => (
                 <Avatar key={member.user_id} className="w-8 h-8 border-2 border-background">
                   {member.avatar_url ? (
                     <AvatarImage src={member.avatar_url} alt={member.username} />
@@ -580,7 +580,7 @@ export default function ListPage({ params }: ListPageProps) {
         {/* SECTION RECOMMANDATIONS */}
         {games.length > 0 && (
           <section className="mt-8">
-            <GameRecommendations 
+            <GameRecommendations
               listId={list.id}
               canEdit={canEdit}
               onGameAdded={loadList}
@@ -591,4 +591,4 @@ export default function ListPage({ params }: ListPageProps) {
       <Footer />
     </div>
   );
-} 
+}

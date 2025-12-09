@@ -54,9 +54,9 @@ export default function TierListHomePage() {
             <h1 className="text-3xl font-bold">Mes Tier Lists</h1>
             <Button onClick={() => setStep("menu")}>Créer une nouvelle tier list</Button>
           </div>
-          
+
           {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tierLists.map((tierList) => (
               <Card key={tierList.id} className="p-6 hover:shadow-lg transition-shadow">
@@ -78,7 +78,7 @@ export default function TierListHomePage() {
               </Card>
             ))}
           </div>
-          
+
           {tierLists.length === 0 && !error && (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-4">Vous n&apos;avez pas encore de tier list</p>
@@ -158,8 +158,8 @@ export default function TierListHomePage() {
                   )
                 );
                 router.push(`/tier-list/${data.id}`);
-              } catch (err: any) {
-                setError(err.message || "Erreur inconnue");
+              } catch (err: Error | unknown) {
+                setError(err instanceof Error ? err.message : "Erreur inconnue");
               } finally {
                 setLoading(false);
               }

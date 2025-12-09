@@ -17,7 +17,7 @@ export default function View360Page() {
   const [selectedImage, setSelectedImage] = useState<string>('')
   const [isMounted, setIsMounted] = useState(false)
   const viewerRef = useRef<HTMLDivElement>(null)
-  const psvInstance = useRef<any>(null)
+  const psvInstance = useRef<PhotoSphereViewer.Viewer | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
