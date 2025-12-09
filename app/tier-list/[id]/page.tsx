@@ -1949,7 +1949,7 @@ export default function TierListPage() {
                           size="icon"
                           className="rounded-full hover:bg-accent"
                           onClick={() => handleMoveRow(idx, 'down')}
-                          disabled={idx === franchiseRows.length - 1}
+                          disabled={idx === (tierListType === 'games' ? rows.length - 1 : franchiseRows.length - 1)}
                           aria-label="Descendre"
                         >
                           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

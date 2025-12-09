@@ -8,11 +8,6 @@ interface GameFrequency {
   frequency: number;
 }
 
-interface ListWithItems {
-  id: string;
-  items: { game_id: string }[] | null;
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -26,7 +21,7 @@ export async function GET(
       .from('game_lists')
       .select('id, items:game_list_items(game_id)')
       .eq('id', id)
-      .single() as { data: ListWithItems | null; error: Error };
+      .single();
 
     if (error || !list) {
       return NextResponse.json({ error: 'Liste non trouvée' }, { status: 404 });
@@ -75,7 +70,7 @@ export async function GET(
                 cover: similarGame.cover,
                 category: similarGame.category
               };
-
+              
               similarGamesMap.set(similarGame.id, {
                 game: fullGame,
                 frequency: 1
@@ -97,7 +92,7 @@ export async function GET(
     // Si pas assez de recommandations, essayer d'utiliser les genres pour des suggestions supplémentaires
     if (similarGamesMap.size < 5) {
       console.log("Pas assez de recommandations basées sur les jeux similaires, utilisation des genres...");
-
+      
       // Extraire les genres les plus populaires de la liste
       const genreCount = new Map<number, number>();
       validGames.forEach(game => {
@@ -120,7 +115,7 @@ export async function GET(
         try {
           // Rechercher des jeux populaires dans ces genres
           const genreBasedGames = await gameService.searchGames("", 1, "rating", undefined, topGenres);
-
+          
           genreBasedGames.results.slice(0, 10).forEach(game => {
             if (!currentGameIds.has(game.id) && !similarGamesMap.has(game.id)) {
               similarGamesMap.set(game.id, {
