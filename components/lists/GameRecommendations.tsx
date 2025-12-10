@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -25,11 +25,7 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
   const [isLoading, setIsLoading] = useState(true);
   const [addingGameId, setAddingGameId] = useState<number | null>(null);
 
-  useEffect(() => {
-    loadRecommendations();
-  }, [listId]);
-
-  const loadRecommendations = async () => {
+  const loadRecommendations = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/lists/${listId}/recommendations`);
@@ -45,7 +41,13 @@ export function GameRecommendations({ listId, canEdit, onGameAdded }: GameRecomm
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [listId]);
+
+  useEffect(() => {
+    loadRecommendations();
+  }, [listId, loadRecommendations]);
+
+
 
   const handleAddGame = async (game: RecommendedGame) => {
     if (!canEdit) return;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 import { listService } from '@/lib/services/listService';
 import { GameListWithDetails } from '@/lib/types/lists';
@@ -24,11 +24,10 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadLists = async () => {
+  const loadLists = useCallback(async () => {
     try {
       const userLists = await listService.getUserLists();
       setLists(userLists);
-      console.log(userLists);
     } catch (e) {
       console.error(e);
       toast({
@@ -37,7 +36,7 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
         variant: "destructive"
       });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     if (isOpen && user) {

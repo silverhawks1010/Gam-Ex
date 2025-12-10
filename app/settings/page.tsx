@@ -9,10 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Navbar } from "@/components/molecules/Navbar";
 import { Footer } from "@/components/molecules/Footer";
-import { 
-  BsPerson, BsShield, BsDiscord, BsImage, BsKey, BsEye, BsEyeSlash 
+import {
+  BsPerson, BsShield, BsDiscord, BsImage, BsKey, BsEye, BsEyeSlash
 } from 'react-icons/bs';
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { imageService } from "@/lib/services/imageService";
 import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "@/lib/hooks/useUser";
@@ -76,15 +76,7 @@ export default function SettingsPage() {
 
   const [showPinModal, setShowPinModal] = useState(false);
 
-  // Charger les données au montage du composant
-  useEffect(() => {
-    if (user?.id) {
-      loadProfile();
-      loadImages();
-    }
-  }, [user?.id]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -122,9 +114,9 @@ export default function SettingsPage() {
         variant: "destructive"
       });
     }
-  };
+  }, [user?.id, user?.email, toast]);
 
-  const loadImages = async () => {
+  const loadImages = useCallback(async () => {
     if (!user?.id) return;
 
     const avatar = await imageService.getImageUrl(user.id, 'avatar');
@@ -132,7 +124,15 @@ export default function SettingsPage() {
 
     setAvatarUrl(avatar);
     setBannerUrl(banner);
-  };
+  }, [user?.id]);
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile();
+      loadImages();
+    }
+  }, [user?.id, loadProfile, loadImages]);
 
   const handleImageUpload = async (file: File, type: 'avatar' | 'banner') => {
     if (!user?.id) {
@@ -147,7 +147,7 @@ export default function SettingsPage() {
     setIsUploading(true);
     try {
       const result = await imageService.uploadImage(file, user.id, type);
-      
+
       if (result.success) {
         toast({
           title: "Succès",
@@ -311,10 +311,10 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Paramètres</h1>
-        
+
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" className="flex items-center gap-2">
@@ -349,7 +349,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Photo de profil</Label>
                   <div className="flex items-center gap-4">
-                    <div 
+                    <div
                       className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden"
                       style={{
                         backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none',
@@ -362,8 +362,8 @@ export default function SettingsPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={handleAvatarClick}
                         disabled={isUploading}
                       >
@@ -384,7 +384,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Bannière</Label>
                   <div className="flex items-center gap-4">
-                    <div 
+                    <div
                       className="w-full h-32 rounded-lg bg-muted flex items-center justify-center overflow-hidden"
                       style={{
                         backgroundImage: bannerUrl ? `url(${bannerUrl})` : 'none',
@@ -397,8 +397,8 @@ export default function SettingsPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={handleBannerClick}
                         disabled={isUploading}
                       >
@@ -421,8 +421,8 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <div className="grid gap-2">
                     <Label htmlFor="username">Nom d&apos;utilisateur</Label>
-                    <Input 
-                      id="username" 
+                    <Input
+                      id="username"
                       placeholder="Votre nom d'utilisateur"
                       value={profile.username}
                       onChange={handleProfileChange('username')}
@@ -431,9 +431,9 @@ export default function SettingsPage() {
 
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
+                    <Input
+                      id="email"
+                      type="email"
                       placeholder="Votre email"
                       value={profile.email}
                       onChange={handleProfileChange('email')}
@@ -442,8 +442,8 @@ export default function SettingsPage() {
 
                   <div className="grid gap-2">
                     <Label htmlFor="description">Description</Label>
-                    <DescriptionEditor 
-                      initialValue={description} 
+                    <DescriptionEditor
+                      initialValue={description}
                       onChange={handleDescriptionChange}
                     />
                   </div>
@@ -456,8 +456,8 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   onClick={handleProfileUpdate}
                   disabled={isSaving}
                 >
@@ -480,15 +480,15 @@ export default function SettingsPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="current-password">Mot de passe actuel</Label>
                   <div className="relative">
-                    <Input 
-                      id="current-password" 
+                    <Input
+                      id="current-password"
                       type={showPasswords.current ? "text" : "password"}
                       value={passwords.current}
                       onChange={handlePasswordChange('current')}
                     />
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="absolute right-2 top-1/2 -translate-y-1/2"
                       onClick={() => togglePasswordVisibility('current')}
                     >
@@ -504,15 +504,15 @@ export default function SettingsPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="new-password">Nouveau mot de passe</Label>
                   <div className="relative">
-                    <Input 
-                      id="new-password" 
+                    <Input
+                      id="new-password"
                       type={showPasswords.new ? "text" : "password"}
                       value={passwords.new}
                       onChange={handlePasswordChange('new')}
                     />
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="absolute right-2 top-1/2 -translate-y-1/2"
                       onClick={() => togglePasswordVisibility('new')}
                     >
@@ -528,15 +528,15 @@ export default function SettingsPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
                   <div className="relative">
-                    <Input 
-                      id="confirm-password" 
+                    <Input
+                      id="confirm-password"
                       type={showPasswords.confirm ? "text" : "password"}
                       value={passwords.confirm}
                       onChange={handlePasswordChange('confirm')}
                     />
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="absolute right-2 top-1/2 -translate-y-1/2"
                       onClick={() => togglePasswordVisibility('confirm')}
                     >
@@ -573,7 +573,7 @@ export default function SettingsPage() {
                       Permettre aux autres utilisateurs de voir votre profil
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={privacySettings.publicProfile}
                     onCheckedChange={() => handlePrivacyChange('publicProfile')}
                   />
@@ -588,7 +588,7 @@ export default function SettingsPage() {
                       Afficher votre statut en ligne aux autres utilisateurs
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={privacySettings.onlineStatus}
                     onCheckedChange={() => handlePrivacyChange('onlineStatus')}
                   />
@@ -603,7 +603,7 @@ export default function SettingsPage() {
                       Permettre aux autres de voir vos jeux et statistiques
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={privacySettings.gameHistory}
                     onCheckedChange={() => handlePrivacyChange('gameHistory')}
                   />
@@ -629,7 +629,7 @@ export default function SettingsPage() {
                       Afficher votre tag Discord sur votre profil
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={discordSettings.showDiscord}
                     onCheckedChange={() => handleDiscordChange('showDiscord')}
                   />
@@ -644,7 +644,7 @@ export default function SettingsPage() {
                       Afficher votre statut Discord (en ligne, occupé, etc.)
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={discordSettings.showStatus}
                     onCheckedChange={() => handleDiscordChange('showStatus')}
                   />
@@ -659,7 +659,7 @@ export default function SettingsPage() {
                       Permettre aux autres de vous trouver via Discord
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={discordSettings.allowTeamFinding}
                     onCheckedChange={() => handleDiscordChange('allowTeamFinding')}
                   />

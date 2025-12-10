@@ -400,7 +400,7 @@ export default function TierListPage() {
   }, [tierListType]);
 
   // Fonction de sauvegarde automatique
-  const autoSave = async () => {
+  const autoSave = useCallback(async () => {
     if (isSaving) return;
     setIsSaving(true);
     try {
@@ -531,7 +531,7 @@ export default function TierListPage() {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [rows, franchiseRows, toast, isSaving, isPublic, tierListId, tierListName, tierListType]);
 
   // Effet pour la sauvegarde automatique
   useEffect(() => {
@@ -539,7 +539,7 @@ export default function TierListPage() {
       autoSave();
       setShouldSave(false);
     }
-  }, [shouldSave, rows, franchiseRows]);
+  }, [shouldSave, rows, franchiseRows, autoSave, isSaving]);
 
   // Modification de handleEdit pour déclencher la sauvegarde
   const handleEdit = (idx: number, label: string, color: string) => {
@@ -1949,7 +1949,7 @@ export default function TierListPage() {
                           size="icon"
                           className="rounded-full hover:bg-accent"
                           onClick={() => handleMoveRow(idx, 'down')}
-                          disabled={idx === (tierListType === 'games' ? rows.length - 1 : franchiseRows.length - 1)}
+                          disabled={idx === franchiseRows.length - 1}
                           aria-label="Descendre"
                         >
                           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

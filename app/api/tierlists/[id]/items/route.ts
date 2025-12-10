@@ -60,22 +60,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
     tierlist_id: string;
     column_id: string;
     position: number;
-    game_id?: string;
-    franchise_id?: string;
+    game_id?: number | null;
+    franchise_id?: number | null;
     name: string;
     cover: string;
   };
 
-  const insertData: TierlistItemInsert = { 
-    tierlist_id: id, 
-    column_id, 
+  const insertData: TierlistItemInsert = {
+    tierlist_id: id,
+    column_id,
     position,
     name,
     cover
   };
-  if (game_id) insertData.game_id = game_id;
-  if (franchise_id) insertData.franchise_id = franchise_id;
-  
+  if (game_id) insertData.game_id = Number(game_id);
+  if (franchise_id) insertData.franchise_id = Number(franchise_id);
+
   const { data, error } = await supabase
     .from('tierlist_items')
     .insert(insertData)

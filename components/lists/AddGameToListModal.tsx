@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -35,29 +35,30 @@ export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalPr
   const [isLoading, setIsLoading] = useState(false);
 
   // Fonction de recherche avec debounce
-  const debouncedSearch = useCallback(
-    debounce(async (query: string) => {
-      if (!query.trim()) {
-        setSearchResults([]);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        const response = await fetch(`/api/games/search?q=${encodeURIComponent(query)}&page=1`);
-        if (!response.ok) {
-          throw new Error('Erreur lors de la recherche');
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(async (query: string) => {
+        if (!query.trim()) {
+          setSearchResults([]);
+          return;
         }
-        const data = await response.json();
-        setSearchResults(data.results.slice(0, 10)); // Limiter à 10 résultats
-      } catch (error) {
-        console.error('Erreur lors de la recherche:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300),
-    []
+
+        setIsSearching(true);
+        try {
+          const response = await fetch(`/api/games/search?q=${encodeURIComponent(query)}&page=1`);
+          if (!response.ok) {
+            throw new Error('Erreur lors de la recherche');
+          }
+          const data = await response.json();
+          setSearchResults(data.results.slice(0, 10));
+        } catch (error) {
+          console.error('Erreur lors de la recherche:', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300),
+    [] // Le tableau vide [] garantit que la fonction n'est créée qu'au montage
   );
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalPr
     setIsLoading(true);
     try {
       await listService.addGameToList(listId, selectedGame.id.toString());
-      
+
       toast({
         title: "Succès",
         description: "Jeu ajouté à la liste avec succès"
@@ -176,13 +177,12 @@ export function AddGameToListModal({ listId, onGameAdded }: AddGameToListModalPr
                   searchResults.map((game) => {
                     const coverUrl = getCoverUrl(game);
                     const releaseYear = getReleaseYear(game);
-                    
+
                     return (
                       <div
                         key={game.id}
-                        className={`flex items-center gap-3 p-3 hover:bg-muted cursor-pointer border-b last:border-b-0 ${
-                          selectedGame?.id === game.id ? 'bg-muted' : ''
-                        }`}
+                        className={`flex items-center gap-3 p-3 hover:bg-muted cursor-pointer border-b last:border-b-0 ${selectedGame?.id === game.id ? 'bg-muted' : ''
+                          }`}
                         onClick={() => handleGameSelect(game)}
                       >
                         <div className="flex-shrink-0">

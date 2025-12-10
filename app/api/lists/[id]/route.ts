@@ -16,7 +16,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const { id } = await params;
     const { data: list, error } = await supabase
       .from('game_lists')
-      .select(`*, items:game_list_items(id, game_id, games:game_id(cover:cover_url))`)
+      .select(`
+        *, 
+        items:game_list_items (
+          id, 
+          game_id, 
+          game_id:games (
+            cover:cover_url
+          )
+        )
+      `)
       .eq('id', id)
       .single();
     if (error || !list) {

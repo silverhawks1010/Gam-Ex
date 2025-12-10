@@ -20,6 +20,7 @@ export default function View360Page() {
   const psvInstance = useRef<PhotoSphereViewer.Viewer | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true)
     fetch('/api/360-images')
       .then(res => res.json())

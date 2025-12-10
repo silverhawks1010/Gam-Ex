@@ -26,11 +26,13 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { FaUserCircle } from "react-icons/fa"
 
+
+
 export function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   type User = { id: string; email?: string; user_metadata?: { username?: string; avatar_url?: string } };
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<{ username?: string; avatar_url?: string } | null>(null);
+  const [profile, setProfile] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
   const supabase = createClient()
   const router = useRouter()
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null)
@@ -67,7 +69,7 @@ export function Navbar() {
           .select('avatar_url, username')
           .eq('id', user.id)
           .single();
-        
+
         if (profileData) {
           setProfile(profileData);
           if (profileData.avatar_url) {
@@ -137,7 +139,7 @@ export function Navbar() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{ profile?.username || user?.user_metadata?.username || user?.email}</p>
+                    <p className="text-sm font-medium leading-none">{profile?.username || user?.user_metadata?.username || user?.email}</p>
                     <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                   </div>
                 </DropdownMenuLabel>

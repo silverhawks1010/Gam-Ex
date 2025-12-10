@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -78,29 +78,38 @@ export default function GuessTheGamePage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Charger un jeu selon le mode
-  useEffect(() => {
+  const startGame = useCallback(async () => {
     if (!mode) return;
+
+    // On regroupe les mises à jour pour éviter les rendus en cascade
     setLoading(true);
     setTries(0);
     setStatus("playing");
     setInput("");
     setGame(null);
     setError(null);
-    fetch(`/api/games/random?mode=${mode}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          setError(data.error);
-          setGame(null);
-        } else {
-          setGame(data);
-          setError(null);
-        }
-      })
-      .catch(() => setError("Erreur lors du chargement du jeu."))
-      .finally(() => setLoading(false));
+    setSuggestions([]); // On nettoie aussi les suggestions ici par sécurité
+
+    try {
+      const res = await fetch(`/api/games/random?mode=${mode}`);
+      const data = await res.json();
+
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setGame(data);
+      }
+    } catch (err) {
+      setError("Erreur lors du chargement du jeu : " + err);
+    } finally {
+      setLoading(false);
+    }
   }, [mode]);
+
+  // Charger un jeu selon le mode
+  useEffect(() => {
+    startGame();
+  }, [mode, startGame]);
 
   // Debounced autocomplete
   useEffect(() => {
@@ -181,190 +190,190 @@ export default function GuessTheGamePage() {
     return (
       <div>
         <Navbar />
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background py-8">
-        <Card className="w-full max-w-2xl mx-auto p-8 shadow-2xl rounded-2xl border-0 bg-gradient-to-br from-background to-muted/60">
-          <CardHeader>
-            <CardTitle className="text-4xl text-center mb-2 font-extrabold tracking-tight">Guess the Game</CardTitle>
-            <CardDescription className="text-center mb-6 text-lg text-muted-foreground">Devine le jeu à partir d&apos;un screenshot et d&apos;indices. Choisis ton mode de jeu !</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {MODES.map((m) => (
-                <button
-                  key={m.key}
-                  className={`rounded-xl p-6 flex flex-col items-center shadow-lg hover:scale-[1.04] transition-transform border-2 border-transparent hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 ${m.color} text-white group`}
-                  onClick={() => setMode(m.key)}
-                >
-                  <span className="text-4xl mb-2">{MODE_ICONS[m.key as keyof typeof MODE_ICONS]}</span>
-                  <span className="text-xl font-bold mb-1 group-hover:underline">{m.label}</span>
-                  <span className="text-base opacity-90 text-center">{m.desc}</span>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background py-8">
+          <Card className="w-full max-w-2xl mx-auto p-8 shadow-2xl rounded-2xl border-0 bg-gradient-to-br from-background to-muted/60">
+            <CardHeader>
+              <CardTitle className="text-4xl text-center mb-2 font-extrabold tracking-tight">Guess the Game</CardTitle>
+              <CardDescription className="text-center mb-6 text-lg text-muted-foreground">Devine le jeu à partir d&apos;un screenshot et d&apos;indices. Choisis ton mode de jeu !</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {MODES.map((m) => (
+                  <button
+                    key={m.key}
+                    className={`rounded-xl p-6 flex flex-col items-center shadow-lg hover:scale-[1.04] transition-transform border-2 border-transparent hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 ${m.color} text-white group`}
+                    onClick={() => setMode(m.key)}
+                  >
+                    <span className="text-4xl mb-2">{MODE_ICONS[m.key as keyof typeof MODE_ICONS]}</span>
+                    <span className="text-xl font-bold mb-1 group-hover:underline">{m.label}</span>
+                    <span className="text-base opacity-90 text-center">{m.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
     );
   }
 
   // PARTIE EN COURS
   return (
     <div>
-    <Navbar />
+      <Navbar />
 
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background py-8">
-      <Card className="w-full max-w-xl mx-auto shadow-2xl rounded-2xl border-0 bg-gradient-to-br from-background to-muted/60">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-3xl font-extrabold flex items-center gap-2">{MODE_ICONS[mode as keyof typeof MODE_ICONS]} Guess the Game</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => setMode(null)} className="flex items-center gap-1">
-              <span className="text-lg">↩️</span>
-              <span className="hidden sm:inline">Retour</span>
-            </Button>
-          </div>
-          <CardDescription className="mt-2 text-base">
-            Mode : <span className="font-semibold">{MODES.find(m => m.key === mode)?.label}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex flex-col items-center gap-4">
-              <Skeleton className="w-96 h-56 rounded-xl" />
-              <div className="w-full flex flex-col gap-2 mt-2">
-                {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="w-full h-8 rounded mb-1" />
-                ))}
-              </div>
-              <div className="w-full flex gap-2 mt-4">
-                <Skeleton className="h-10 w-full rounded" />
-                <Skeleton className="h-10 w-24 rounded" />
-              </div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background py-8">
+        <Card className="w-full max-w-xl mx-auto shadow-2xl rounded-2xl border-0 bg-gradient-to-br from-background to-muted/60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-3xl font-extrabold flex items-center gap-2">{MODE_ICONS[mode as keyof typeof MODE_ICONS]} Guess the Game</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setMode(null)} className="flex items-center gap-1">
+                <span className="text-lg">↩️</span>
+                <span className="hidden sm:inline">Retour</span>
+              </Button>
             </div>
-          ) : error || !game ? (
-            <div className="text-center text-red-600 font-bold min-h-[200px] flex items-center justify-center">{error || "Aucun jeu trouvé."}</div>
-          ) : (
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-full flex justify-center">
-                <div
-                  className="relative w-96 h-56 rounded-xl overflow-hidden border shadow bg-muted group cursor-zoom-in transition-transform hover:scale-[1.03]"
-                  onClick={() => game.screenshot && setShowModal(true)}
-                  title={game.screenshot ? 'Agrandir' : ''}
-                >
-                  {game.screenshot ? (
-                    <Image
-                      src={"https:" + game.screenshot.replace('/t_thumb/', '/t_1080p/')}
-                      alt="Screenshot du jeu à deviner"
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      priority
-                    />
-                  ) : (
-                    <span className="flex items-center justify-center w-full h-full text-muted-foreground">Aucune image</span>
-                  )}
+            <CardDescription className="mt-2 text-base">
+              Mode : <span className="font-semibold">{MODES.find(m => m.key === mode)?.label}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex flex-col items-center gap-4">
+                <Skeleton className="w-96 h-56 rounded-xl" />
+                <div className="w-full flex flex-col gap-2 mt-2">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="w-full h-8 rounded mb-1" />
+                  ))}
                 </div>
-                <Dialog open={showModal} onOpenChange={setShowModal}>
-                  <DialogContent className="max-w-none flex flex-col items-center justify-center p-2">
-                    {game.screenshot && (
-                      <div className="relative w-[90vw] h-[90vh]">
-                        <Image
-                          src={"https:" + game.screenshot.replace('/t_thumb/', '/t_1080p/')}
-                          alt="Screenshot du jeu à deviner (agrandi)"
-                          fill
-                          className="rounded-2xl object-contain"
-                          priority
-                        />
+                <div className="w-full flex gap-2 mt-4">
+                  <Skeleton className="h-10 w-full rounded" />
+                  <Skeleton className="h-10 w-24 rounded" />
+                </div>
+              </div>
+            ) : error || !game ? (
+              <div className="text-center text-red-600 font-bold min-h-[200px] flex items-center justify-center">{error || "Aucun jeu trouvé."}</div>
+            ) : (
+              <div className="flex flex-col items-center gap-6">
+                <div className="w-full flex justify-center">
+                  <div
+                    className="relative w-96 h-56 rounded-xl overflow-hidden border shadow bg-muted group cursor-zoom-in transition-transform hover:scale-[1.03]"
+                    onClick={() => game.screenshot && setShowModal(true)}
+                    title={game.screenshot ? 'Agrandir' : ''}
+                  >
+                    {game.screenshot ? (
+                      <Image
+                        src={"https:" + game.screenshot.replace('/t_thumb/', '/t_1080p/')}
+                        alt="Screenshot du jeu à deviner"
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        priority
+                      />
+                    ) : (
+                      <span className="flex items-center justify-center w-full h-full text-muted-foreground">Aucune image</span>
+                    )}
+                  </div>
+                  <Dialog open={showModal} onOpenChange={setShowModal}>
+                    <DialogContent className="max-w-none flex flex-col items-center justify-center p-2">
+                      {game.screenshot && (
+                        <div className="relative w-[90vw] h-[90vh]">
+                          <Image
+                            src={"https:" + game.screenshot.replace('/t_thumb/', '/t_1080p/')}
+                            alt="Screenshot du jeu à deviner (agrandi)"
+                            fill
+                            className="rounded-2xl object-contain"
+                            priority
+                          />
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <div className="w-full flex flex-col gap-2 mt-2">
+                  {game.hints.slice(0, tries + (status !== "playing" ? 1 : 0)).map((hint, i) => (
+                    hint.type === 'text' ? (
+                      <Badge key={i} variant="secondary" className="w-full text-left whitespace-normal py-3 px-4 mb-1 text-base rounded-lg shadow">
+                        {hint.value}
+                      </Badge>
+                    ) : hint.type === 'image' ? (
+                      <div key={i} className="w-full flex justify-center mb-2">
+                        <div className="relative w-40 h-56 rounded-lg overflow-hidden border shadow bg-muted">
+                          <Image
+                            src={"https:" + hint.value.replace("t_thumb", "t_cover_big")}
+                            alt="Jacket très floutée"
+                            fill
+                            className="object-cover w-full h-full blur-[8px]"
+                            style={{ filter: 'blur(8px)' }}
+                          />
+                        </div>
+                      </div>
+                    ) : null
+                  ))}
+                </div>
+                {status === "playing" && (
+                  <form onSubmit={handleGuess} className="w-full flex flex-col gap-0 mt-4 relative">
+                    <div className="flex gap-2">
+                      <Input
+                        ref={inputRef}
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                        onKeyDown={handleInputKeyDown}
+                        placeholder="Nom du jeu..."
+                        className="flex-1 text-lg px-4 py-3 rounded-lg shadow"
+                        autoFocus
+                        disabled={status !== "playing"}
+                        autoComplete="off"
+                      />
+                      <Button type="submit" disabled={!input.trim()} className="text-lg px-6 py-3 rounded-lg shadow font-bold">
+                        Valider
+                      </Button>
+                    </div>
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div
+                        ref={suggestionsRef}
+                        className="absolute left-0 right-0 top-full z-20 bg-popover border border-border rounded-b-xl shadow-lg max-h-56 overflow-auto mt-1"
+                      >
+                        {suggestions.map((s, i) => (
+                          <div
+                            key={s.id}
+                            className={`px-4 py-3 cursor-pointer hover:bg-accent rounded transition-colors ${i === highlighted ? 'bg-accent' : ''}`}
+                            onMouseDown={() => handleSuggestionClick(s.name)}
+                            onMouseEnter={() => setHighlighted(i)}
+                            tabIndex={-1}
+                          >
+                            {s.name}
+                          </div>
+                        ))}
                       </div>
                     )}
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <div className="w-full flex flex-col gap-2 mt-2">
-                {game.hints.slice(0, tries + (status !== "playing" ? 1 : 0)).map((hint, i) => (
-                  hint.type === 'text' ? (
-                    <Badge key={i} variant="secondary" className="w-full text-left whitespace-normal py-3 px-4 mb-1 text-base rounded-lg shadow">
-                      {hint.value}
-                    </Badge>
-                  ) : hint.type === 'image' ? (
-                    <div key={i} className="w-full flex justify-center mb-2">
-                      <div className="relative w-40 h-56 rounded-lg overflow-hidden border shadow bg-muted">
-                        <Image
-                          src={"https:" + hint.value.replace("t_thumb", "t_cover_big")}
-                          alt="Jacket très floutée"
-                          fill
-                          className="object-cover w-full h-full blur-[8px]"
-                          style={{ filter: 'blur(8px)' }}
-                        />
-                      </div>
-                    </div>
-                  ) : null
-                ))}
-              </div>
-              {status === "playing" && (
-                <form onSubmit={handleGuess} className="w-full flex flex-col gap-0 mt-4 relative">
-                  <div className="flex gap-2">
-                    <Input
-                      ref={inputRef}
-                      value={input}
-                      onChange={e => setInput(e.target.value)}
-                      onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                      onKeyDown={handleInputKeyDown}
-                      placeholder="Nom du jeu..."
-                      className="flex-1 text-lg px-4 py-3 rounded-lg shadow"
-                      autoFocus
-                      disabled={status !== "playing"}
-                      autoComplete="off"
-                    />
-                    <Button type="submit" disabled={!input.trim()} className="text-lg px-6 py-3 rounded-lg shadow font-bold">
-                      Valider
+                  </form>
+                )}
+                <div className="w-full flex justify-between mt-2 text-base text-muted-foreground">
+                  <span>Essais restants : <span className="font-bold text-foreground">{5 - tries}</span></span>
+                  <span>Indice {game.hints.length ? Math.min(tries + 1, game.hints.length) : 0}/{game.hints.length}</span>
+                </div>
+                {status === "won" && (
+                  <div className="w-full text-center mt-4 bg-green-100 text-green-700 font-bold text-xl rounded-lg py-4 shadow flex flex-col items-center gap-2">
+                    <span className="text-3xl">🎉</span>
+                    Bravo ! C&apos;était bien <span className="underline">{game.name}</span>
+                    <Button className="mt-2" onClick={() => { setMode(null); setTimeout(() => setMode(mode), 0); }}>
+                      Rejouer
                     </Button>
                   </div>
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div
-                      ref={suggestionsRef}
-                      className="absolute left-0 right-0 top-full z-20 bg-popover border border-border rounded-b-xl shadow-lg max-h-56 overflow-auto mt-1"
-                    >
-                      {suggestions.map((s, i) => (
-                        <div
-                          key={s.id}
-                          className={`px-4 py-3 cursor-pointer hover:bg-accent rounded transition-colors ${i === highlighted ? 'bg-accent' : ''}`}
-                          onMouseDown={() => handleSuggestionClick(s.name)}
-                          onMouseEnter={() => setHighlighted(i)}
-                          tabIndex={-1}
-                        >
-                          {s.name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </form>
-              )}
-              <div className="w-full flex justify-between mt-2 text-base text-muted-foreground">
-                <span>Essais restants : <span className="font-bold text-foreground">{5 - tries}</span></span>
-                <span>Indice {game.hints.length ? Math.min(tries + 1, game.hints.length) : 0}/{game.hints.length}</span>
+                )}
+                {status === "lost" && (
+                  <div className="w-full text-center mt-4 bg-red-100 text-red-700 font-bold text-xl rounded-lg py-4 shadow flex flex-col items-center gap-2">
+                    <span className="text-3xl">😢</span>
+                    Raté ! La réponse était <span className="underline">{game.name}</span>
+                    <Button className="mt-2" onClick={() => { setMode(null); setTimeout(() => setMode(mode), 0); }}>
+                      Rejouer
+                    </Button>
+                  </div>
+                )}
               </div>
-              {status === "won" && (
-                <div className="w-full text-center mt-4 bg-green-100 text-green-700 font-bold text-xl rounded-lg py-4 shadow flex flex-col items-center gap-2">
-                  <span className="text-3xl">🎉</span>
-                  Bravo ! C&apos;était bien <span className="underline">{game.name}</span>
-                  <Button className="mt-2" onClick={() => { setMode(null); setTimeout(() => setMode(mode), 0); }}>
-                    Rejouer
-                  </Button>
-                </div>
-              )}
-              {status === "lost" && (
-                <div className="w-full text-center mt-4 bg-red-100 text-red-700 font-bold text-xl rounded-lg py-4 shadow flex flex-col items-center gap-2">
-                  <span className="text-3xl">😢</span>
-                  Raté ! La réponse était <span className="underline">{game.name}</span>
-                  <Button className="mt-2" onClick={() => { setMode(null); setTimeout(() => setMode(mode), 0); }}>
-                    Rejouer
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
+            )}
+          </CardContent>
         </Card>
       </div>
       <Footer />
