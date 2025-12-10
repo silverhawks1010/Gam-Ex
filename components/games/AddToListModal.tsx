@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 import { listService } from '@/lib/services/listService';
 import { GameListWithDetails } from '@/lib/types/lists';
@@ -24,17 +24,10 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
   const [selectedLists, setSelectedLists] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && user) {
-      loadLists();
-    }
-  }, [isOpen, user]);
-
-  const loadLists = async () => {
+  const loadLists = useCallback(async () => {
     try {
       const userLists = await listService.getUserLists();
       setLists(userLists);
-      console.log(userLists);
     } catch (e) {
       console.error(e);
       toast({
@@ -43,7 +36,13 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
         variant: "destructive"
       });
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (isOpen && user) {
+      loadLists();
+    }
+  }, [isOpen, user, loadLists]);
 
   const handleAddToList = async () => {
     if (selectedLists.length === 0) {
@@ -60,12 +59,12 @@ export function AddToListModal({ gameId, trigger }: AddToListModalProps) {
       await Promise.all(
         selectedLists.map(listId => listService.addGameToList(listId, gameId))
       );
-      
+
       toast({
         title: "Succès",
         description: "Jeu ajouté aux listes sélectionnées"
       });
-      
+
       setIsOpen(false);
       setSelectedLists([]);
     } catch (e) {

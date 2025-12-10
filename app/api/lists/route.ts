@@ -49,7 +49,7 @@ export async function GET() {
     if (sharedListIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
-        .select(`*, items:game_list_items(id, game_id, games:game_id(cover:cover_url)), shares:game_list_shares(*)`)
+        .select(`*, items:game_list_items(id, game_id, game_id:games(cover:cover_url)), shares:game_list_shares(*)`)
         .in('id', sharedListIds);
       sharedLists = data || [];
     }

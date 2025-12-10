@@ -7,10 +7,10 @@ export async function GET(request: Request, { params }: { params: { id: string; 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id, itemId } = params;
+  const { id, itemId } = await params;
   const { data, error } = await supabase
     .from('tierlist_items')
-    .select('id, tierlist_id, column_id, item_id, item_type, position')
+    .select('id, tierlist_id, column_id, item_id, item_type, position, name, cover')
     .eq('id', itemId)
     .eq('tierlist_id', id)
     .single();
@@ -29,15 +29,16 @@ export async function PUT(request: Request, { params }: { params: { id: string; 
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id, itemId } = params;
+  const { id, itemId } = await params;
   const body = await request.json();
-  const { column_id, position } = body;
+  const { column_id, position, name, cover } = body;
+
   if (!column_id) {
     return NextResponse.json({ error: 'Column ID is required' }, { status: 400 });
   }
   const { data, error } = await supabase
     .from('tierlist_items')
-    .update({ column_id, position })
+    .update({ column_id, position, name, cover })
     .eq('id', itemId)
     .eq('tierlist_id', id)
     .select()
@@ -57,7 +58,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const { id, itemId } = params;
+  const { id, itemId } = await params;
   const { error } = await supabase
     .from('tierlist_items')
     .delete()

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { GameList, GameListItem, GameListWithDetails } from '@/lib/types/lists';
+import { GameList, GameListItem, GameListShare, GameListWithDetails } from '@/lib/types/lists';
 
 const supabase = createClient();
 
@@ -10,12 +10,12 @@ export const listService = {
       console.log('Début getUserLists');
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       console.log('Auth response:', { user, authError });
-      
+
       if (authError) {
         console.error('Erreur d\'authentification:', authError);
         throw authError;
       }
-      
+
       if (!user) {
         console.error('Utilisateur non authentifié');
         throw new Error('Utilisateur non authentifié');
@@ -26,7 +26,8 @@ export const listService = {
       const { data: ownerLists, error: ownerError } = await supabase
         .from('game_lists')
         .select(`*, items:game_list_items(*), shares:game_list_shares(*)`)
-        .eq('owner_id', user.id);
+        .eq('owner_id', user.id)
+        .returns<(GameList & { items: GameListItem[]; shares: GameListShare[] })[]>();
 
       if (ownerError) throw ownerError;
 
@@ -36,12 +37,13 @@ export const listService = {
         .select('list_id')
         .eq('user_id', user.id);
       const sharedListIds = (sharedListLinks || []).map(l => l.list_id);
-      let sharedLists = [];
+      let sharedLists: (GameList & { items: GameListItem[]; shares: GameListShare[] })[] = [];
       if (sharedListIds.length > 0) {
         const { data, error } = await supabase
           .from('game_lists')
           .select(`*, items:game_list_items(*), shares:game_list_shares(*)`)
-          .in('id', sharedListIds);
+          .in('id', sharedListIds)
+          .returns<(GameList & { items: GameListItem[]; shares: GameListShare[] })[]>();
         if (error) throw error;
         sharedLists = data || [];
       }

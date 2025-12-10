@@ -8,7 +8,7 @@ import { gameService } from "@/lib/services/gameService";
 import { Footer } from "@/components/molecules/Footer";
 import { genreIcons, genreTranslations } from "@/config/genres";
 import { Genre, Game } from "@/types/game";
-import { BsController, BsDiscord, BsTwitter, BsPeople } from 'react-icons/bs';
+import { BsController, BsDiscord, BsPeople } from 'react-icons/bs';
 
 // Composant pour la section des genres
 async function GenreSection() {
@@ -80,7 +80,7 @@ export default async function Home() {
     <main className="min-h-screen bg-background">
       <Navbar />
       <div className="w-full max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Hero/Banner */}
         <section className="py-12 md:py-20 lg:py-28 relative">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
@@ -130,14 +130,16 @@ export default async function Home() {
               Partagez vos expériences, découvrez de nouveaux jeux et connectez-vous avec d&apos;autres passionnés de gaming.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold flex items-center gap-2 w-full sm:w-auto">
+              <Link href="https://discord.gg/eWV36cb7R4" target="_blank" className="bg-primary hover:bg-primary/90 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold flex items-center gap-2 w-full sm:w-auto border border-primary/40 rounded-4xl">
                 <BsDiscord className="w-5 h-5" />
                 Rejoindre le Discord
-              </Button>
+              </Link>
+              {/*
               <Button size="lg" variant="outline" className="px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold flex items-center gap-2 border-primary/40 w-full sm:w-auto">
                 <BsTwitter className="w-5 h-5 text-sky-500" />
                 Suivre sur Twitter
               </Button>
+              */}
             </div>
           </div>
         </section>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { listService } from '@/lib/services/listService';
@@ -26,18 +26,7 @@ export default function ListsPage() {
   const [newListName, setNewListName] = useState('');
   const [isPublic, setIsPublic] = useState(false);
 
-  useEffect(() => {
-    if (loading) return;
-    
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    loadLists();
-  }, [user, loading]);
-
-  const loadLists = async () => {
+  const loadLists = useCallback(async () => {
     try {
       const userLists = await listService.getUserLists();
       setLists(userLists);
@@ -51,7 +40,18 @@ export default function ListsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    loadLists();
+  }, [user, loading, loadLists, router]);
 
   const handleCreateList = async () => {
     if (!newListName.trim()) {
@@ -66,16 +66,16 @@ export default function ListsPage() {
     try {
       const newList = await listService.createList(newListName, isPublic);
       if (user) {
-        setLists([...lists, { 
-          ...newList, 
-          items: [], 
-          shares: [], 
-          owner: { 
+        setLists([...lists, {
+          ...newList,
+          items: [],
+          shares: [],
+          owner: {
             id: user.id,
             username: user.user_metadata?.username || user.email || 'Utilisateur',
             avatar_url: (user.user_metadata as { avatar_url?: string })?.avatar_url || null,
             email: user.email || '',
-          } 
+          }
         }]);
         setNewListName('');
         setIsPublic(false);
@@ -150,7 +150,7 @@ export default function ListsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Mes Listes</h1>
@@ -269,4 +269,4 @@ export default function ListsPage() {
       <Footer />
     </div>
   );
-} 
+}

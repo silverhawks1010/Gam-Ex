@@ -21,15 +21,39 @@ export const PinPublicListsModal: React.FC<PinPublicListsModalProps> = ({ open, 
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    supabase
-      .from('game_lists')
-      .select('id, name')
-      .eq('is_public', true)
-      .then(({ data }) => {
-        setPublicLists(data || []);
-        setLoading(false);
-      });
+
+    let isMounted = true;
+
+    const fetchPublicLists = async () => {
+      try {
+        setLoading(true);
+
+        const { data, error } = await supabase
+          .from('game_lists')
+          .select('id, name')
+          .eq('is_public', true);
+
+        if (isMounted) {
+          if (error) {
+            console.error('Error fetching lists:', error);
+          } else {
+            setPublicLists(data || []);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchPublicLists();
+
+    return () => {
+      isMounted = false;
+    };
   }, [open, supabase]);
 
   useEffect(() => {

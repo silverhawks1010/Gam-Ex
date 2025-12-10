@@ -76,8 +76,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       `)
 
       .in('id', profile.pinned_lists);
-      
-      
+
+
     pinnedLists = (lists || []).map(list => ({
       ...list,
       games: (list.game_list_items || []).map((item) => {
@@ -93,7 +93,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     }));
   }
 
-  
+
 
   const { data: { user } } = await supabase.auth.getUser();
   const loggedInUserId = user?.id;
@@ -104,7 +104,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   if (isOwner) {
     const { data: ownedLists } = await supabase
       .from('game_lists')
-      .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
+      .select('id, name, is_public, created_at, game_list_items(id, game_id, games(cover_url))')
       .eq('owner_id', loggedInUserId)
       .order('created_at', { ascending: false });
     const { data: sharedListIds } = await supabase
@@ -117,7 +117,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     if (sharedIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
-        .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
+        .select('id, name, is_public, created_at, game_list_items(id, game_id, games( cover_url))')
         .in('id', sharedIds)
         .order('created_at', { ascending: false });
       sharedLists = data || [];
@@ -131,7 +131,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   } else {
     const { data: publicOwnedLists } = await supabase
       .from('game_lists')
-      .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
+      .select('id, name, is_public, created_at, game_list_items(id, game_id, games(cover_url))')
       .eq('is_public', true)
       .eq('owner_id', profileUserId)
       .order('created_at', { ascending: false });
@@ -145,7 +145,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     if (sharedIds.length > 0) {
       const { data } = await supabase
         .from('game_lists')
-        .select('id, name, is_public, created_at, game_list_items(id, game_id, cover_url)')
+        .select('id, name, is_public, created_at, game_list_items(id, game_id, games(cover_url))')
         .eq('is_public', true)
         .in('id', sharedIds)
         .order('created_at', { ascending: false });
@@ -186,10 +186,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <div className="relative">
             <Avatar className="w-32 h-32 ring-4 ring-background shadow-xl flex items-center justify-center">
               {typedProfile.avatar_url && typedProfile.avatar_url.trim() !== '' ? (
-                <Image 
+                <Image
                   src={typedProfile.avatar_url} alt={typedProfile.username}
                   fill
-                  className="w-full h-full object-cover rounded-full" 
+                  className="w-full h-full object-cover rounded-full"
                 />
               ) : (
                 <div className="w-full h-full text-muted-foreground">
@@ -235,7 +235,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 </CardHeader>
                 <CardContent>
                   {pinnedLists && pinnedLists.length > 0 ? (
-                    <ListsGrid lists={pinnedLists}  />
+                    <ListsGrid lists={pinnedLists} />
                   ) : (
                     <div className="text-muted-foreground text-center py-8">
                       Aucune liste épinglée

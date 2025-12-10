@@ -11,7 +11,7 @@ export function GameImage({ src, alt, className }: GameImageProps) {
   return (
     <div className={cn("relative overflow-hidden", className)}>
       <Image
-        src={src || '/images/game-placeholder.jpg'}
+        src={src?.replace('/t_thumb/', '/t_cover_big/') || '/images/game-placeholder.jpg'}
         alt={alt}
         fill
         className="object-cover"

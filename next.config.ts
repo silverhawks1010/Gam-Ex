@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -30,6 +31,11 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'placehold.co',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'imgproxy.gamearea.fr',
         pathname: '/**',
       },
     ],
